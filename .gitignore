@@ -1,0 +1,7 @@
+# Earlier exploratory session files remain local; curated public sources are in src/.
+/yam-dynamics/
+/artifacts/
+node_modules/
+__pycache__/
+.DS_Store
+*.log

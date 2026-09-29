@@ -1,0 +1,78 @@
+<div id="yam-gravity-explorer">
+  <h3>YAM · 静止悬停的重力补偿</h3>
+  <div class="text-small">基座固定 · 速度、加速度、外力均为 0 · 含夹爪</div>
+  <div class="yg-main">
+    <div class="yg-scene">
+      <canvas id="yg-canvas" role="img" aria-label="YAM 机械臂：所选关节轴、下游连杆、总质心和重力；拖动可旋转视角"></canvas>
+      <div class="viz-row">
+        <button type="button" class="btn btn-ghost" id="yg-side">侧视</button>
+        <button type="button" class="btn btn-ghost" id="yg-iso">斜视</button>
+        <button type="button" class="btn btn-ghost" id="yg-axis">沿所选关节轴看</button>
+      </div>
+      <div class="yg-legend text-small"><span><i class="yg-dot"></i>下游各连杆质心</span><span><i class="yg-com"></i>下游总质心 / 重力</span><span><i class="yg-axis"></i>关节正轴 / 电机补偿</span></div>
+    </div>
+    <div><div class="text-small yg-bar-caption">补偿力矩条：左 − / 右 ＋</div><div id="yg-sliders" aria-label="六个关节角度与重力补偿力矩"></div></div>
+  </div>
+  <hr>
+  <div class="viz-controls">
+    <label class="form-label" for="yg-selected">力矩计算：观察哪个关节？
+      <select class="form-select" id="yg-selected"><option value="0">J1</option><option value="1" selected>J2</option><option value="2">J3</option><option value="3">J4</option><option value="4">J5</option><option value="5">J6</option></select>
+    </label>
+    <div id="yg-result" class="tabular-nums" aria-live="polite"></div>
+  </div>
+  <div class="yg-calculation">
+    <svg id="yg-plane" role="img" aria-label="从关节正轴端向关节看：重力在转动平面内的分量、带符号力臂与电机补偿方向"></svg>
+    <div class="yg-numbers tabular-nums">
+      <div><span class="text-small">下游总质量</span><div id="yg-mass"></div></div>
+      <div><span class="text-small" data-tooltip="投影系数为关节轴与重力夹角的正弦；重力垂直关节轴时为 1，平行时为 0。">平面内重力 · 总重力 × 投影系数</span><div id="yg-force"></div></div>
+      <div><span class="text-small">带符号力臂</span><div id="yg-arm"></div></div>
+      <div><span class="text-small">电机补偿力矩 · 力 × 力臂</span><div id="yg-product"></div></div>
+    </div>
+  </div>
+  <details id="yg-breakdown">
+    <summary>展开：各连杆对所选关节的贡献</summary>
+    <svg id="yg-contributions" role="img" aria-label="下游各连杆对所选关节的重力补偿力矩贡献"></svg>
+    <div class="table-responsive"><table class="table table-sm tabular-nums"><thead><tr><th>URDF 连杆</th><th>质量 / kg</th><th>带符号力臂 / m</th><th>补偿 / N·m</th></tr></thead><tbody id="yg-link-rows"></tbody><tfoot><tr><th>合计</th><td id="yg-mass-sum"></td><td>—</td><td id="yg-torque-sum"></td></tr></tfoot></table></div>
+  </details>
+  <div class="yg-source text-small">I2RT YAM v1 · URDF 120c3c8 · 两指锁定在 0 · 无额外负载 · 刚体模型计算值</div>
+</div>
+<style>
+ #yam-gravity-explorer { display:flow-root; width:100%; color:var(--foreground); padding-bottom:12px; }
+ #yam-gravity-explorer h3 { margin:8px 0; }
+ #yam-gravity-explorer .yg-main { display:grid; grid-template-columns:minmax(0,1fr) 206px; gap:18px; margin:12px 0; }
+ #yam-gravity-explorer .yg-scene { min-width:0; }
+ #yam-gravity-explorer #yg-canvas { width:100%; height:440px; display:block; touch-action:none; cursor:grab; }
+ #yam-gravity-explorer #yg-sliders { display:grid; grid-template-columns:1fr; gap:12px; align-content:start; }
+ #yam-gravity-explorer .yg-bar-caption { margin-bottom:10px; color:var(--muted-foreground); }
+ #yam-gravity-explorer .yg-slider-head { display:flex; justify-content:space-between; gap:8px; }
+ #yam-gravity-explorer .yg-torque { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+ #yam-gravity-explorer .yg-meter { width:74px; flex-shrink:0; height:8px; position:relative; background:var(--muted); }
+ #yam-gravity-explorer .yg-meter:after { content:''; position:absolute; left:50%; top:-2px; height:12px; width:1px; background:var(--muted-foreground); }
+ #yam-gravity-explorer .yg-meter-fill { position:absolute; height:8px; background:var(--viz-series-1); }
+ #yam-gravity-explorer .yg-legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:12px; }
+ #yam-gravity-explorer .yg-legend span { display:flex; align-items:center; gap:5px; }
+ #yam-gravity-explorer .yg-legend i { display:inline-block; width:8px; height:8px; }
+ #yam-gravity-explorer .yg-dot { background:var(--muted-foreground); border-radius:50%; }
+ #yam-gravity-explorer .yg-com { background:var(--viz-series-2); transform:rotate(45deg); }
+ #yam-gravity-explorer .yg-axis { background:var(--viz-series-1); }
+ #yam-gravity-explorer .yg-calculation { display:grid; grid-template-columns:minmax(0,1fr) 235px; gap:22px; align-items:center; margin:12px 0; }
+ #yam-gravity-explorer .yg-numbers { display:grid; gap:10px; }
+ #yam-gravity-explorer #yg-plane, #yam-gravity-explorer #yg-contributions { display:block; width:100%; }
+ #yam-gravity-explorer #yg-contributions { margin-top:12px; }
+ #yam-gravity-explorer .yg-source { margin-top:16px; color:var(--muted-foreground); }
+ #yam-gravity-explorer .yg-numbers .text-small { color:var(--muted-foreground); }
+ @media(max-width:580px) {
+   #yam-gravity-explorer .yg-main { grid-template-columns:1fr; gap:16px; }
+   #yam-gravity-explorer #yg-canvas { height:330px; }
+   #yam-gravity-explorer #yg-sliders { grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px 16px; }
+   #yam-gravity-explorer .yg-calculation { grid-template-columns:1fr; gap:10px; }
+   #yam-gravity-explorer .yg-numbers { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+   #yam-gravity-explorer .yg-torque { flex-wrap:wrap; gap:4px; }
+ }
+</style>
+<script>
+__DYNAMICS_ENGINE__
+const YAM_GRAVITY_MODEL = __MODEL_JSON__;
+__GRAVITY_GEOMETRY__
+__GRAVITY_APP__
+</script>
