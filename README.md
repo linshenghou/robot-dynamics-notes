@@ -47,17 +47,21 @@ node scripts/check_site.cjs
 
 项目站点：[linshenghou.github.io/robot-dynamics-notes](https://linshenghou.github.io/robot-dynamics-notes/)。
 公开仓库：[linshenghou/robot-dynamics-notes](https://github.com/linshenghou/robot-dynamics-notes)。
-向 main 推送更新后，GitHub Actions 会验证并发布 docs。所有资源使用相对路径，也适配 Fork 后的项目站点。
+网站使用 GitHub Pages 的分支发布：main 分支的 /docs 目录。推送更新后会自动重新发布。
+发布前运行构建与数值检查。所有资源使用相对路径，也适配 Fork 后的项目站点。
 
 在你自己的账号下部署时：
 
 1. Fork 本仓库，或创建公开仓库，将源码推送到默认分支 `main`。
-2. 打开 Settings → Pages → Build and deployment，将 Source 设为 **GitHub Actions**。
-3. 在 Actions 运行 **Deploy course to GitHub Pages**，或继续向 main 推送修改。
+2. 打开 Settings → Pages → Build and deployment，将 Source 设为 **Deploy from a branch**。
+3. 选择 **main** 分支与 **/docs** 目录，保存并等待发布完成。
 
-仓库已带 `.github/workflows/pages.yml`：先验证，再仅发布 `docs/`。设置完成后的首次运行才会获得真实站点地址。
-不使用 Actions 时，也可以在 Pages 中选择 Deploy from a branch → main → `/docs`。
-两种方式选其一。详情见 [GitHub Pages 官方文档](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)。
+需要把构建验证纳入自动发布时，可将示例工作流
+[.github/pages-workflow.example.yml](.github/pages-workflow.example.yml) 复制到
+.github/workflows/pages.yml，再将 Pages 的 Source 切换为 **GitHub Actions**。
+当前启用的是分支发布，示例工作流不会执行。
+
+详情见 [GitHub Pages 官方文档](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)。
 
 ## 文件结构
 

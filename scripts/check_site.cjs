@@ -18,7 +18,7 @@ const root=path.resolve(__dirname,'..'),artifacts=path.join(root,'artifacts');fs
   browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});
   const page=await browser.newPage({viewport:{width:1440,height:1060},deviceScaleFactor:1});
   const errors=[],external=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error')errors.push(e.text());});
-  await page.route('**/*',route=>{const u=new URL(route.request().url());if(['file:','data:'].includes(u.protocol)||u.hostname==='127.0.0.1')route.continue();else{external.push(u.href);route.abort();}});
+  await page.route('**/*',route=>{const u=new URL(route.request().url());if(['file:','data:'].includes(u.protocol)||u.hostname==='127.0.0.1'||u.origin===new URL(base).origin)route.continue();else{external.push(u.href);route.abort();}});
   if(base.startsWith('file:'))await page.context().setOffline(true);
   await page.goto(base);await page.waitForLoadState('networkidle');
   const bench=page.frameLocator('#workbench-frame');await bench.locator('#yam-lab[data-ready="true"]').waitFor();
