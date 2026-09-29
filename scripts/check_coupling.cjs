@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'..'),artifacts=path.join(root,'artifacts');
  const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1060},deviceScaleFactor:1});
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error')errors.push(e.text());});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error')errors.push(e.text()+' '+e.location().url);});
   const url=process.env.SITE_URL?new URL('labs/gravity.html',process.env.SITE_URL).href:'file://'+path.join(root,'docs/labs/gravity.html');
   await page.goto(url);await page.waitForLoadState('networkidle');await page.locator('#yam-gravity-explorer[data-ready="true"]').waitFor();
   const snapshot=()=>page.evaluate(()=>yamGravitySnapshot());
