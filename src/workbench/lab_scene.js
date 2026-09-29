@@ -9,6 +9,7 @@ const YamLabScene = (()=>{
     const rgb=a=>`rgb(${a.map(x=>Math.max(0,Math.min(255,Math.round(x)))).join(',')})`;
     function draw(result,state){
       if(!result)return;hits=[];
+      const jointColor=j=>state.heat?YamTorqueHeat.css(result.tau[j]):colors[j===state.j?'inertia':'ink'].css;
       const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;const dpr=Math.min(devicePixelRatio||1,2);canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
       const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw),cp=Math.cos(state.pitch),sp=Math.sin(state.pitch);
       const view=p=>[cy*p[0]-sy*p[1],-sp*(sy*p[0]+cy*p[1])+cp*p[2],cp*(sy*p[0]+cy*p[1])+sp*p[2]];
@@ -22,7 +23,9 @@ const YamLabScene = (()=>{
       const faces=[];
       for(const mesh of worldMeshes){
         const focus=mesh.name===(state.panel==='gravity'?state.link:active[state.j].child),frame=result.fk.frames[mesh.name],downstream=frame.ancestors.includes(state.j);
-        const color=colors[focus?'inertia':downstream?'inertia':'ink'].rgb,tint=focus?.72:downstream?.50:.43,base=color.map((v,i)=>v*tint+colors.surface.rgb[i]*(1-tint));
+        // A link takes the heat colour of the active joint that drives it.
+        const heatJoint=frame.ancestors.at(-1),color=state.heat&&heatJoint!==undefined?YamTorqueHeat.rgb(result.tau[heatJoint]):colors[focus?'inertia':downstream?'inertia':'ink'].rgb;
+        const tint=state.heat && heatJoint!==undefined ? .76 : focus ? .72 : downstream ? .50 : .43,base=color.map((v,i)=>v*tint+colors.surface.rgb[i]*(1-tint));
         for(const tri of mesh.triangles){const p=tri.map(i=>mesh.points[i]),ww=tri.map(i=>mesh.world[i]),normal=D.cross(D.sub(ww[1],ww[0]),D.sub(ww[2],ww[0])),n=Math.sqrt(D.dot(normal,normal));if(n<1e-10)continue;const light=.64+.36*Math.abs(D.dot(D.scale(normal,1/n),[.3,-.4,.866]));faces.push({p,depth:p.reduce((s,p)=>s+p[2],0)/3,c:rgb(base.map(v=>v*light))});}
       }
       faces.sort((a,b)=>a.depth-b.depth);for(const f of faces){const p=f.p.map(screen);ctx.beginPath();ctx.moveTo(...p[0]);ctx.lineTo(...p[1]);ctx.lineTo(...p[2]);ctx.closePath();ctx.fillStyle=f.c;ctx.fill();}
@@ -32,7 +35,7 @@ const YamLabScene = (()=>{
       const max=Math.max(.01,...result.tau.map(Math.abs));
       result.fk.jointFrames.forEach((f,j)=>{
         const p=proj(f.p),axis=f.axis,seed=Math.abs(axis[2])<.9?[0,0,1]:[0,1,0];let u=D.cross(seed,axis);u=D.scale(u,1/Math.sqrt(D.dot(u,u)));const v=D.cross(axis,u);
-        const color=colors[j===state.j?'inertia':'ink'].css;
+        const color=jointColor(j);
         ctx.beginPath();ctx.arc(...p,j===state.j?4.5:3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
         if(Math.abs(result.tau[j])>.0005){const pts=[],dir=Math.sign(result.tau[j]);for(let k=0;k<=24;k++){const t=.4+dir*k/24*4.7;pts.push(proj(D.add(f.p,D.add(D.scale(u,.048*Math.cos(t)),D.scale(v,.048*Math.sin(t))))));}ctx.beginPath();ctx.moveTo(...pts[0]);pts.slice(1).forEach(p=>ctx.lineTo(...p));ctx.lineWidth=1+1.6*Math.sqrt(Math.abs(result.tau[j])/max);ctx.strokeStyle=color;ctx.stroke();head(pts.at(-2),pts.at(-1),color);}
       });
@@ -45,7 +48,7 @@ const YamLabScene = (()=>{
         for(let k=list.length-1;k>=0;k--)list[k].y=Math.min(list[k].y,h-48-(list.length-1-k)*42);
         for(const n of list){const tau=result.tau[n.j],s=Math.abs(tau)<.0005?'≈0':(tau>=0?'+':'')+tau.toFixed(3),text=`J${n.j+1}  ${s}`,len=ctx.measureText(text).width,x=side?w-len-4:4;
           const anchor=[side?x-5:x+len+5,n.y];line(n.p,anchor,colors.muted.css,.75,[2,3]);
-          ctx.fillStyle=colors.surface.css;ctx.globalAlpha=.95;ctx.fillRect(x-2,n.y-11,len+4,22);ctx.globalAlpha=1;ctx.fillStyle=colors[n.j===state.j?'inertia':'ink'].css;ctx.fillText(text,x,n.y);
+          ctx.fillStyle=colors.surface.css;ctx.globalAlpha=.95;ctx.fillRect(x-2,n.y-11,len+4,22);ctx.globalAlpha=1;ctx.fillStyle=jointColor(n.j);ctx.fillText(text,x,n.y);
           if(n.j===state.j)line([x,n.y+11],[x+len,n.y+11],colors.inertia.css,1.5);
           hits.push({j:n.j,x:x-5,y:n.y-16,w:len+10,h:32});
         }

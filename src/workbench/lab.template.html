@@ -28,8 +28,9 @@
     </section>
     <section class="torque-pane" aria-labelledby="torque-title">
       <div class="pane-title"><h2 id="torque-title">关节补偿力矩</h2><span class="micro">N·m</span></div>
-      <div class="intro-legend"><i></i>重力补偿 <span>· 静止姿态</span></div><div class="legend"><span class="inertia">■ 惯性</span><span class="velocity">■ 速度项</span><span class="gravity">■ 重力</span><span>◆ 合计</span></div>
+      <div class="intro-legend">静止姿态 · 重力补偿</div><div class="legend"><span class="inertia">■ 惯性</span><span class="velocity">■ 速度项</span><span class="gravity">■ 重力</span><span>◆ 合计</span></div>
       <svg id="torque-bars" role="img" aria-label="六个关节的惯性、速度、重力分量和总力矩"></svg>
+      <div class="torque-heat-key" aria-label="力矩绝对值色标：蓝色表示零，红色表示十六牛米或以上"><span>力矩大小 |τ|</span><div class="torque-heat-ramp"></div><div class="torque-heat-ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>≥16 N·m</span></div><small>连杆颜色对应该连杆的入端关节。<br>蓝色小 · 红色大；正负看数字与左右方向。</small></div>
       <div class="micro">左负 / 右正 · 六关节共用刻度<br><span class="advanced-note">正负分量可能相互抵消</span></div>
     </section>
   </div>
@@ -80,6 +81,7 @@
 <script>__DYNAMICS_ENGINE__
 const LAB_MODEL = __MODEL_JSON__;
 __LAB_MATH__
+__TORQUE_HEAT__
 __LAB_SCENE__
 __LAB_APP__</script>
 </body>

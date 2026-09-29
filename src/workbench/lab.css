@@ -38,6 +38,13 @@ h1,.calculation-header h2{font-family:var(--font);letter-spacing:-.5px}
 .intro-legend i{width:6px;height:6px;border-radius:2px;background:var(--gravity)}
 .intro-legend span{color:var(--muted)}
 .intro .torque-pane .micro{font-size:10px}
+.torque-heat-key{display:none}
+.intro .torque-heat-key{display:block;margin:10px 0 13px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
+.torque-heat-key>span{display:block;margin-bottom:6px;color:var(--ink);font-size:11px}
+.torque-heat-ramp{height:8px;border-radius:8px;background:linear-gradient(90deg,rgb(91,159,232) 0%,rgb(115,194,235) 15%,rgb(239,183,116) 35%,rgb(240,130,97) 65%,rgb(227,81,88) 100%)}
+.torque-heat-ticks{display:flex;justify-content:space-between;gap:2px;margin:4px 0 7px;font:9px var(--mono)}
+.torque-heat-key small{display:block;font-size:10px;line-height:1.5}
+.intro .joint-button[aria-pressed=true]{text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--inertia);text-decoration-thickness:2px}
 @media(max-width:1100px) and (min-width:841px){
  .workspace{grid-template-columns:185px minmax(300px,1fr) 226px}
  .control-pane,.scene-pane,.torque-pane{padding:15px}

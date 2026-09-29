@@ -2,6 +2,10 @@
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),http=require('node:http');
 const root=path.resolve(__dirname,'..'),artifacts=path.join(root,'artifacts');fs.mkdirSync(artifacts,{recursive:true});
+const torqueHeat=require(path.join(root,'src/workbench/torque_heat.js'));
+assert.equal(torqueHeat.css(-6),torqueHeat.css(6),'Torque heat shows magnitude, independent of sign');
+assert.equal(torqueHeat.css(24),torqueHeat.css(16),'The colour scale clips above its labelled limit');
+assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
 (async()=>{
  let server,base=process.env.SITE_URL||'file://'+path.join(root,'docs/index.html');
  if(process.argv.includes('--http')){
@@ -29,7 +33,12 @@ const root=path.resolve(__dirname,'..'),artifacts=path.join(root,'artifacts');fs
   assert(modelBox.y<300&&modelBox.y+modelBox.height<800,'Model is visible immediately');
   assert(barBox.y<320&&barBox.y+barBox.height<800,'Six torques are visible immediately');
   assert(formulaBox.y>modelBox.y+modelBox.height,'Formula follows the entire experiment');
+  const heatRows=()=>bench.locator('#torque-bars .torque-row').evaluateAll(rows=>rows.map(row=>({torque:Number(row.dataset.torque),heat:row.dataset.heat.replace(/\s/g,''),label:getComputedStyle(row.querySelector('text')).fill.replace(/\s/g,''),bar:row.querySelector('.torque-heat-bar').getAttribute('fill').replace(/\s/g,'')})));
+  const heatBefore=await heatRows();assert.equal(heatBefore.length,6);
+  assert(heatBefore.every(row=>row.label===row.heat&&row.bar===row.heat),'Robot torque colours match all six bar labels and fills');
+  assert(new Set(heatBefore.map(row=>row.heat)).size>2,'The initial pose shows distinct torque magnitudes');
   const initial=await bench.locator('#yam-lab').getAttribute('data-torques');await bench.locator('#range-2').focus();await page.keyboard.press('ArrowRight');assert.notEqual(await bench.locator('#yam-lab').getAttribute('data-torques'),initial);
+  await bench.locator('#number-1').fill('0');const heatAfter=await heatRows();assert(heatBefore.some((row,j)=>row.heat!==heatAfter[j].heat),'Torque colours respond to joint angles');
   await page.locator('#begin-learning').click();await page.waitForFunction(()=>scrollY>600);
   await page.goto(base+'#gravity');
   const gf=page.frameLocator('iframe[title="YAM 六关节重力补偿实验"]');await gf.locator('#yam-gravity-explorer[data-ready="true"]').waitFor();
@@ -69,7 +78,7 @@ const root=path.resolve(__dirname,'..'),artifacts=path.join(root,'artifacts');fs
   await page.locator('[data-mode="motion"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.c.some(x=>Math.abs(x)>.001));
   await page.locator('[data-mode="static"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.acc.every(x=>Math.abs(x)<1e-10));assert(snap.result.c.every(x=>Math.abs(x)<1e-10));
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:7,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','interactive YAM joint angles','standalone inertia and velocity modes','navigation and deep links','gravity iframe slider','planar special pose','quiz feedback','wrench projection','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
+  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:7,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','fixed torque heat scale and six matching labels and bars','heat colours update with joint angles','interactive YAM joint angles','standalone inertia and velocity modes','navigation and deep links','gravity iframe slider','planar special pose','quiz feedback','wrench projection','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
   fs.writeFileSync(path.join(artifacts,base.startsWith('file:')?'browser-file.json':'browser-http.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
  }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -17,3 +17,4 @@ main{max-width:1552px;margin:auto;padding:23px 40px 32px;outline:none}.page{max-
 @media print{.site-header,.sidebar,.quiz,.actions,.next,.site-footer{display:none}main{margin:0;padding:0}.page[hidden]{display:none!important}.experiment,.formula{break-inside:avoid}}
 
 .experiment-prompt>button{border:0;padding:0;background:none;font-family:inherit;cursor:pointer}.experiment-prompt>button:hover{color:var(--teal)}
+.legend-ramp{display:inline-block;width:20px;height:5px;flex:none;border-radius:4px;background:linear-gradient(90deg,#5b9fe8,#efb774,#e35158)}

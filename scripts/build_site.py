@@ -17,13 +17,13 @@ CSS = '''
 '''
 src = ROOT/'src'
 gravity = (src/'gravity/gravity.template.html').read_text()
-for key, file in [('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__ALL_JOINT_SCENE__','workbench/lab_scene.js'),('__GRAVITY_GEOMETRY__','gravity/gravity_geometry.js'),('__COUPLING_VIEW__','gravity/coupling_view.js'),('__GRAVITY_APP__','gravity/gravity.js')]:
+for key, file in [('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__TORQUE_HEAT__','workbench/torque_heat.js'),('__ALL_JOINT_SCENE__','workbench/lab_scene.js'),('__GRAVITY_GEOMETRY__','gravity/gravity_geometry.js'),('__COUPLING_VIEW__','gravity/coupling_view.js'),('__GRAVITY_APP__','gravity/gravity.js')]:
     gravity=gravity.replace(key,(src/file).read_text())
 license_text=(src/'model/LICENSE').read_text()
 gravity='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YAM 重力补偿实验</title><link rel="icon" href="../assets/icon.svg" type="image/svg+xml"><style>'+CSS+'</style></head><body><!-- I2RT model and reduced geometry: '+license_text+' -->'+gravity+HEIGHT+'</body></html>'
 wrench=(src/'wrench/wrench.html').read_text().replace('</html>',HEIGHT+'</html>')
 workbench=(src/'workbench/lab.template.html').read_text()
-for key,file in [('__LAB_CSS__','workbench/lab.css'),('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__LAB_MATH__','workbench/lab_math.js'),('__LAB_SCENE__','workbench/lab_scene.js'),('__LAB_APP__','workbench/lab.js')]:
+for key,file in [('__LAB_CSS__','workbench/lab.css'),('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__LAB_MATH__','workbench/lab_math.js'),('__TORQUE_HEAT__','workbench/torque_heat.js'),('__LAB_SCENE__','workbench/lab_scene.js'),('__LAB_APP__','workbench/lab.js')]:
     workbench=workbench.replace(key,(src/file).read_text())
 workbench=workbench.replace('<head>','<!-- I2RT model and reduced geometry: '+license_text+' -->\n<head>',1).replace('</body>',HEIGHT+'</body>')
 outputs={ROOT/'docs/labs/gravity.html':gravity,ROOT/'docs/labs/wrench.html':wrench,ROOT/'docs/labs/workbench.html':workbench}

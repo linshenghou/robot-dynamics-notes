@@ -56,6 +56,13 @@ h1,.calculation-header h2{font-family:var(--font);letter-spacing:-.5px}
 .intro-legend i{width:6px;height:6px;border-radius:2px;background:var(--gravity)}
 .intro-legend span{color:var(--muted)}
 .intro .torque-pane .micro{font-size:10px}
+.torque-heat-key{display:none}
+.intro .torque-heat-key{display:block;margin:10px 0 13px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
+.torque-heat-key>span{display:block;margin-bottom:6px;color:var(--ink);font-size:11px}
+.torque-heat-ramp{height:8px;border-radius:8px;background:linear-gradient(90deg,rgb(91,159,232) 0%,rgb(115,194,235) 15%,rgb(239,183,116) 35%,rgb(240,130,97) 65%,rgb(227,81,88) 100%)}
+.torque-heat-ticks{display:flex;justify-content:space-between;gap:2px;margin:4px 0 7px;font:9px var(--mono)}
+.torque-heat-key small{display:block;font-size:10px;line-height:1.5}
+.intro .joint-button[aria-pressed=true]{text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--inertia);text-decoration-thickness:2px}
 @media(max-width:1100px) and (min-width:841px){
  .workspace{grid-template-columns:185px minmax(300px,1fr) 226px}
  .control-pane,.scene-pane,.torque-pane{padding:15px}
@@ -102,8 +109,9 @@ h1,.calculation-header h2{font-family:var(--font);letter-spacing:-.5px}
     </section>
     <section class="torque-pane" aria-labelledby="torque-title">
       <div class="pane-title"><h2 id="torque-title">关节补偿力矩</h2><span class="micro">N·m</span></div>
-      <div class="intro-legend"><i></i>重力补偿 <span>· 静止姿态</span></div><div class="legend"><span class="inertia">■ 惯性</span><span class="velocity">■ 速度项</span><span class="gravity">■ 重力</span><span>◆ 合计</span></div>
+      <div class="intro-legend">静止姿态 · 重力补偿</div><div class="legend"><span class="inertia">■ 惯性</span><span class="velocity">■ 速度项</span><span class="gravity">■ 重力</span><span>◆ 合计</span></div>
       <svg id="torque-bars" role="img" aria-label="六个关节的惯性、速度、重力分量和总力矩"></svg>
+      <div class="torque-heat-key" aria-label="力矩绝对值色标：蓝色表示零，红色表示十六牛米或以上"><span>力矩大小 |τ|</span><div class="torque-heat-ramp"></div><div class="torque-heat-ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>≥16 N·m</span></div><small>连杆颜色对应该连杆的入端关节。<br>蓝色小 · 红色大；正负看数字与左右方向。</small></div>
       <div class="micro">左负 / 右正 · 六关节共用刻度<br><span class="advanced-note">正负分量可能相互抵消</span></div>
     </section>
   </div>
@@ -271,6 +279,33 @@ const YamLabMath = (() => {
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=YamLabMath;
 
+// A fixed magnitude scale makes colours comparable across poses. The sign is
+// represented separately by the bar direction and the printed value.
+const YamTorqueHeat = (() => {
+  const max = 16;
+  const stops = [
+    [0, [91, 159, 232]],
+    [0.15, [115, 194, 235]],
+    [0.35, [239, 183, 116]],
+    [0.65, [240, 130, 97]],
+    [1, [227, 81, 88]],
+  ];
+  function rgb(torque) {
+    const t = Math.min(1, Math.abs(torque) / max);
+    for (let i = 1; i < stops.length; i++) {
+      const [end, b] = stops[i];
+      if (t <= end) {
+        const [start, a] = stops[i - 1], weight = (t - start) / (end - start);
+        return a.map((channel, k) => Math.round(channel + (b[k] - channel) * weight));
+      }
+    }
+    return stops.at(-1)[1];
+  }
+  const css = torque => `rgb(${rgb(torque).join(',')})`;
+  return { max, rgb, css };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = YamTorqueHeat;
+
 const YamLabScene = (()=>{
   function create(canvas,D,model,palette={}){
     const ctx=canvas.getContext('2d'),active=model.joints.filter(j=>j.active),meshes=Object.values(model.links).map(link=>({name:link.name,vertices:link.mesh.vertices.map(v=>D.add(link.visual.xyz,D.mv(D.rpy(link.visual.rpy),v))),triangles:link.mesh.triangles}));
@@ -282,6 +317,7 @@ const YamLabScene = (()=>{
     const rgb=a=>`rgb(${a.map(x=>Math.max(0,Math.min(255,Math.round(x)))).join(',')})`;
     function draw(result,state){
       if(!result)return;hits=[];
+      const jointColor=j=>state.heat?YamTorqueHeat.css(result.tau[j]):colors[j===state.j?'inertia':'ink'].css;
       const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;const dpr=Math.min(devicePixelRatio||1,2);canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
       const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw),cp=Math.cos(state.pitch),sp=Math.sin(state.pitch);
       const view=p=>[cy*p[0]-sy*p[1],-sp*(sy*p[0]+cy*p[1])+cp*p[2],cp*(sy*p[0]+cy*p[1])+sp*p[2]];
@@ -295,7 +331,9 @@ const YamLabScene = (()=>{
       const faces=[];
       for(const mesh of worldMeshes){
         const focus=mesh.name===(state.panel==='gravity'?state.link:active[state.j].child),frame=result.fk.frames[mesh.name],downstream=frame.ancestors.includes(state.j);
-        const color=colors[focus?'inertia':downstream?'inertia':'ink'].rgb,tint=focus?.72:downstream?.50:.43,base=color.map((v,i)=>v*tint+colors.surface.rgb[i]*(1-tint));
+        // A link takes the heat colour of the active joint that drives it.
+        const heatJoint=frame.ancestors.at(-1),color=state.heat&&heatJoint!==undefined?YamTorqueHeat.rgb(result.tau[heatJoint]):colors[focus?'inertia':downstream?'inertia':'ink'].rgb;
+        const tint=state.heat && heatJoint!==undefined ? .76 : focus ? .72 : downstream ? .50 : .43,base=color.map((v,i)=>v*tint+colors.surface.rgb[i]*(1-tint));
         for(const tri of mesh.triangles){const p=tri.map(i=>mesh.points[i]),ww=tri.map(i=>mesh.world[i]),normal=D.cross(D.sub(ww[1],ww[0]),D.sub(ww[2],ww[0])),n=Math.sqrt(D.dot(normal,normal));if(n<1e-10)continue;const light=.64+.36*Math.abs(D.dot(D.scale(normal,1/n),[.3,-.4,.866]));faces.push({p,depth:p.reduce((s,p)=>s+p[2],0)/3,c:rgb(base.map(v=>v*light))});}
       }
       faces.sort((a,b)=>a.depth-b.depth);for(const f of faces){const p=f.p.map(screen);ctx.beginPath();ctx.moveTo(...p[0]);ctx.lineTo(...p[1]);ctx.lineTo(...p[2]);ctx.closePath();ctx.fillStyle=f.c;ctx.fill();}
@@ -305,7 +343,7 @@ const YamLabScene = (()=>{
       const max=Math.max(.01,...result.tau.map(Math.abs));
       result.fk.jointFrames.forEach((f,j)=>{
         const p=proj(f.p),axis=f.axis,seed=Math.abs(axis[2])<.9?[0,0,1]:[0,1,0];let u=D.cross(seed,axis);u=D.scale(u,1/Math.sqrt(D.dot(u,u)));const v=D.cross(axis,u);
-        const color=colors[j===state.j?'inertia':'ink'].css;
+        const color=jointColor(j);
         ctx.beginPath();ctx.arc(...p,j===state.j?4.5:3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
         if(Math.abs(result.tau[j])>.0005){const pts=[],dir=Math.sign(result.tau[j]);for(let k=0;k<=24;k++){const t=.4+dir*k/24*4.7;pts.push(proj(D.add(f.p,D.add(D.scale(u,.048*Math.cos(t)),D.scale(v,.048*Math.sin(t))))));}ctx.beginPath();ctx.moveTo(...pts[0]);pts.slice(1).forEach(p=>ctx.lineTo(...p));ctx.lineWidth=1+1.6*Math.sqrt(Math.abs(result.tau[j])/max);ctx.strokeStyle=color;ctx.stroke();head(pts.at(-2),pts.at(-1),color);}
       });
@@ -318,7 +356,7 @@ const YamLabScene = (()=>{
         for(let k=list.length-1;k>=0;k--)list[k].y=Math.min(list[k].y,h-48-(list.length-1-k)*42);
         for(const n of list){const tau=result.tau[n.j],s=Math.abs(tau)<.0005?'≈0':(tau>=0?'+':'')+tau.toFixed(3),text=`J${n.j+1}  ${s}`,len=ctx.measureText(text).width,x=side?w-len-4:4;
           const anchor=[side?x-5:x+len+5,n.y];line(n.p,anchor,colors.muted.css,.75,[2,3]);
-          ctx.fillStyle=colors.surface.css;ctx.globalAlpha=.95;ctx.fillRect(x-2,n.y-11,len+4,22);ctx.globalAlpha=1;ctx.fillStyle=colors[n.j===state.j?'inertia':'ink'].css;ctx.fillText(text,x,n.y);
+          ctx.fillStyle=colors.surface.css;ctx.globalAlpha=.95;ctx.fillRect(x-2,n.y-11,len+4,22);ctx.globalAlpha=1;ctx.fillStyle=jointColor(n.j);ctx.fillText(text,x,n.y);
           if(n.j===state.j)line([x,n.y+11],[x+len,n.y+11],colors.inertia.css,1.5);
           hits.push({j:n.j,x:x-5,y:n.y-16,w:len+10,h:32});
         }
@@ -338,7 +376,7 @@ const YamLabScene = (()=>{
   const $=id=>document.getElementById(id),all=s=>[...root.querySelectorAll(s)],active=model.joints.filter(j=>j.active),Z=()=>Array(6).fill(0);
   const intro=document.documentElement.classList.contains('intro');
   const example=[0,1.3,1,0,0,0],key=intro?'rdn-workbench-intro-v1':'rdn-workbench-full-v1';
-  const state={q:example.slice(),a:Z(),v:Z(),j:1,col:1,link:'link3',mode:'static',panel:'gravity',input:'q',yaw:.7,pitch:.4,com:true};
+  const state={q:example.slice(),a:Z(),v:Z(),j:1,col:1,link:'link3',mode:'static',panel:'gravity',input:'q',yaw:.7,pitch:.4,com:true,heat:intro};
   const fmt=(n,d=3)=>Math.abs(n)<.5*10**(-d)?(0).toFixed(d):n.toFixed(d),sgn=(n,d=3)=>(n>=.5*10**(-d)?'+':'')+fmt(n,d),brief=n=>Math.abs(n)<.0005?'≈0':sgn(n),mfmt=n=>Math.abs(n)<1e-9?'0':Math.abs(n)<.0005?n.toExponential(1):fmt(n),vec=(v,d=4)=>'['+v.map(x=>fmt(x,d)).join(', ')+']';
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function restore(s){
@@ -366,7 +404,7 @@ const YamLabScene = (()=>{
     all('[data-detail]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.detail===state.panel)));
     for(const panel of ['gravity','mass','velocity'])$('panel-'+panel).hidden=panel!==state.panel;
     all('[data-input]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.input===state.input));b.disabled=(b.dataset.input==='a'&&state.mode==='static')||(b.dataset.input==='v'&&state.mode!=='motion');});
-    all('[data-joint]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.joint)===state.j)));
+    all('[data-joint]').forEach(b=>{const j=Number(b.dataset.joint);b.setAttribute('aria-pressed',String(j===state.j));if(intro&&result)b.style.color=YamTorqueHeat.css(result.tau[j]);});
     for(let i=0;i<6;i++){
       const cfg=config(i),value=state[state.input][i]/cfg.mult;
       for(const id of ['number-','range-']){const e=$(id+i);e.min=cfg.min;e.max=cfg.max;e.step=cfg.step;if(document.activeElement!==e)e.value=fmt(value,state.input==='q'?1:2);e.setAttribute('aria-label',`J${i+1} ${cfg.name} / ${cfg.unit}`);}
@@ -379,18 +417,21 @@ const YamLabScene = (()=>{
     $('velocity-status').textContent=state.v.every(x=>x===0)?'当前 q̇ = 0 → 此项为 0':'当前 q̇ ≠ 0';
     $('gravity-status').textContent='由当前姿态决定';
   }
-  const svgFinish=svg=>svg.querySelectorAll('text').forEach(t=>{t.style.fill='var(--ink)';});
+  const svgFinish=svg=>svg.querySelectorAll('text').forEach(t=>{t.style.fill=t.getAttribute('fill')||'var(--ink)';});
   function torqueBars(){
     if(!result)return;const svg=$('torque-bars'),w=svg.clientWidth;if(!w)return;const wide=w>550||(intro&&innerWidth<=520),cols=wide?2:1,cellW=w/cols,h=wide?218:390;
     svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('height',h);
     const bound=Math.max(.02,...result.tau.map((_,i)=>{const parts=[result.acc[i],result.c[i],result.g[i]];return Math.max(parts.filter(x=>x>0).reduce((a,b)=>a+b,0),-parts.filter(x=>x<0).reduce((a,b)=>a+b,0));}))*1.12;
-    let s='<title>六关节力矩分解；菱形为分量之和</title>';
+    let s=`<title>${intro?'六关节重力补偿力矩；蓝色小、红色大；菱形标示数值':'六关节力矩分解；菱形为分量之和'}</title>`;
     for(let j=0;j<6;j++){
       const col=wide?j%2:0,row=wide?Math.floor(j/2):j,off=col*cellW,y=14+row*60,left=off+10,right=off+cellW-(col===0&&wide?24:4),width=right-left,x=v=>left+(v/bound+1)*width/2;
-      s+=`<text x="${left}" y="${y}" class="chart-label">J${j+1}</text><text x="${right}" y="${y}" text-anchor="end">${sgn(result.tau[j])}</text><rect x="${left}" y="${y+11}" width="${width}" height="15" fill="var(--soft)"/><line x1="${x(0)}" y1="${y+7}" x2="${x(0)}" y2="${y+32}" stroke="var(--muted)" stroke-width=".7"/>`;
-      let pos=0,neg=0;for(const [val,color,name] of [[result.acc[j],'inertia','惯性'],[result.c[j],'velocity','速度项'],[result.g[j],'gravity','重力']]){const from=val>=0?pos:neg,to=from+val;if(val>=0)pos=to;else neg=to;s+=`<rect x="${Math.min(x(from),x(to))}" y="${y+11}" width="${Math.abs(x(to)-x(from))}" height="15" fill="var(--${color})"><title>J${j+1} ${name} ${val.toFixed(6)} N·m</title></rect>`;}
-      const tx=x(result.tau[j]);s+=`<path d="M${tx},${y+25} l4,5 -4,5 -4,-5 Z" fill="var(--ink)"/>`;
+      const heat=intro?YamTorqueHeat.css(result.tau[j]):null,labelClass=intro?'torque-heat-label chart-label':'chart-label',valueClass=intro?'torque-heat-label':'';
+      s+=`<g class="torque-row" data-joint="${j}" data-torque="${result.tau[j].toFixed(6)}" data-heat="${heat||''}"><text x="${left}" y="${y}" class="${labelClass}" ${intro?`fill="${heat}"`:''}>J${j+1}</text><text x="${right}" y="${y}" text-anchor="end" class="${valueClass}" ${intro?`fill="${heat}"`:''}>${sgn(result.tau[j])}</text><rect x="${left}" y="${y+11}" width="${width}" height="15" fill="var(--soft)"/><line x1="${x(0)}" y1="${y+7}" x2="${x(0)}" y2="${y+32}" stroke="var(--muted)" stroke-width=".7"/>`;
+      if(intro){const value=result.tau[j];s+=`<rect class="torque-heat-bar" x="${Math.min(x(0),x(value))}" y="${y+11}" width="${Math.abs(x(value)-x(0))}" height="15" fill="${heat}"><title>J${j+1} 重力补偿 ${value.toFixed(6)} N·m</title></rect>`;}
+      else {let pos=0,neg=0;for(const [val,color,name] of [[result.acc[j],'inertia','惯性'],[result.c[j],'velocity','速度项'],[result.g[j],'gravity','重力']]){const from=val>=0?pos:neg,to=from+val;if(val>=0)pos=to;else neg=to;s+=`<rect x="${Math.min(x(from),x(to))}" y="${y+11}" width="${Math.abs(x(to)-x(from))}" height="15" fill="var(--${color})"><title>J${j+1} ${name} ${val.toFixed(6)} N·m</title></rect>`;}}
+      const tx=x(result.tau[j]);s+=`<path d="M${tx},${y+25} l4,5 -4,5 -4,-5 Z" fill="${heat||'var(--ink)'}"/>`;
       if(j===state.j)s+=`<line x1="${left}" y1="${y+40}" x2="${right}" y2="${y+40}" stroke="var(--inertia)" stroke-width="1"/>`;
+      s+='</g>';
     }
     for(let col=0;col<cols;col++){const left=col*cellW+10,right=(col+1)*cellW-(col===0&&wide?24:4);s+=`<text x="${left}" y="${h-7}">${fmt(-bound,1)}</text><text x="${(left+right)/2}" y="${h-7}" text-anchor="middle">0</text><text x="${right}" y="${h-7}" text-anchor="end">${fmt(bound,1)} N·m</text>`;}
     svg.innerHTML=s;svgFinish(svg);

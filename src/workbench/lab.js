@@ -3,7 +3,7 @@
   const $=id=>document.getElementById(id),all=s=>[...root.querySelectorAll(s)],active=model.joints.filter(j=>j.active),Z=()=>Array(6).fill(0);
   const intro=document.documentElement.classList.contains('intro');
   const example=[0,1.3,1,0,0,0],key=intro?'rdn-workbench-intro-v1':'rdn-workbench-full-v1';
-  const state={q:example.slice(),a:Z(),v:Z(),j:1,col:1,link:'link3',mode:'static',panel:'gravity',input:'q',yaw:.7,pitch:.4,com:true};
+  const state={q:example.slice(),a:Z(),v:Z(),j:1,col:1,link:'link3',mode:'static',panel:'gravity',input:'q',yaw:.7,pitch:.4,com:true,heat:intro};
   const fmt=(n,d=3)=>Math.abs(n)<.5*10**(-d)?(0).toFixed(d):n.toFixed(d),sgn=(n,d=3)=>(n>=.5*10**(-d)?'+':'')+fmt(n,d),brief=n=>Math.abs(n)<.0005?'≈0':sgn(n),mfmt=n=>Math.abs(n)<1e-9?'0':Math.abs(n)<.0005?n.toExponential(1):fmt(n),vec=(v,d=4)=>'['+v.map(x=>fmt(x,d)).join(', ')+']';
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function restore(s){
@@ -31,7 +31,7 @@
     all('[data-detail]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.detail===state.panel)));
     for(const panel of ['gravity','mass','velocity'])$('panel-'+panel).hidden=panel!==state.panel;
     all('[data-input]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.input===state.input));b.disabled=(b.dataset.input==='a'&&state.mode==='static')||(b.dataset.input==='v'&&state.mode!=='motion');});
-    all('[data-joint]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.joint)===state.j)));
+    all('[data-joint]').forEach(b=>{const j=Number(b.dataset.joint);b.setAttribute('aria-pressed',String(j===state.j));if(intro&&result)b.style.color=YamTorqueHeat.css(result.tau[j]);});
     for(let i=0;i<6;i++){
       const cfg=config(i),value=state[state.input][i]/cfg.mult;
       for(const id of ['number-','range-']){const e=$(id+i);e.min=cfg.min;e.max=cfg.max;e.step=cfg.step;if(document.activeElement!==e)e.value=fmt(value,state.input==='q'?1:2);e.setAttribute('aria-label',`J${i+1} ${cfg.name} / ${cfg.unit}`);}
@@ -44,18 +44,21 @@
     $('velocity-status').textContent=state.v.every(x=>x===0)?'当前 q̇ = 0 → 此项为 0':'当前 q̇ ≠ 0';
     $('gravity-status').textContent='由当前姿态决定';
   }
-  const svgFinish=svg=>svg.querySelectorAll('text').forEach(t=>{t.style.fill='var(--ink)';});
+  const svgFinish=svg=>svg.querySelectorAll('text').forEach(t=>{t.style.fill=t.getAttribute('fill')||'var(--ink)';});
   function torqueBars(){
     if(!result)return;const svg=$('torque-bars'),w=svg.clientWidth;if(!w)return;const wide=w>550||(intro&&innerWidth<=520),cols=wide?2:1,cellW=w/cols,h=wide?218:390;
     svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('height',h);
     const bound=Math.max(.02,...result.tau.map((_,i)=>{const parts=[result.acc[i],result.c[i],result.g[i]];return Math.max(parts.filter(x=>x>0).reduce((a,b)=>a+b,0),-parts.filter(x=>x<0).reduce((a,b)=>a+b,0));}))*1.12;
-    let s='<title>六关节力矩分解；菱形为分量之和</title>';
+    let s=`<title>${intro?'六关节重力补偿力矩；蓝色小、红色大；菱形标示数值':'六关节力矩分解；菱形为分量之和'}</title>`;
     for(let j=0;j<6;j++){
       const col=wide?j%2:0,row=wide?Math.floor(j/2):j,off=col*cellW,y=14+row*60,left=off+10,right=off+cellW-(col===0&&wide?24:4),width=right-left,x=v=>left+(v/bound+1)*width/2;
-      s+=`<text x="${left}" y="${y}" class="chart-label">J${j+1}</text><text x="${right}" y="${y}" text-anchor="end">${sgn(result.tau[j])}</text><rect x="${left}" y="${y+11}" width="${width}" height="15" fill="var(--soft)"/><line x1="${x(0)}" y1="${y+7}" x2="${x(0)}" y2="${y+32}" stroke="var(--muted)" stroke-width=".7"/>`;
-      let pos=0,neg=0;for(const [val,color,name] of [[result.acc[j],'inertia','惯性'],[result.c[j],'velocity','速度项'],[result.g[j],'gravity','重力']]){const from=val>=0?pos:neg,to=from+val;if(val>=0)pos=to;else neg=to;s+=`<rect x="${Math.min(x(from),x(to))}" y="${y+11}" width="${Math.abs(x(to)-x(from))}" height="15" fill="var(--${color})"><title>J${j+1} ${name} ${val.toFixed(6)} N·m</title></rect>`;}
-      const tx=x(result.tau[j]);s+=`<path d="M${tx},${y+25} l4,5 -4,5 -4,-5 Z" fill="var(--ink)"/>`;
+      const heat=intro?YamTorqueHeat.css(result.tau[j]):null,labelClass=intro?'torque-heat-label chart-label':'chart-label',valueClass=intro?'torque-heat-label':'';
+      s+=`<g class="torque-row" data-joint="${j}" data-torque="${result.tau[j].toFixed(6)}" data-heat="${heat||''}"><text x="${left}" y="${y}" class="${labelClass}" ${intro?`fill="${heat}"`:''}>J${j+1}</text><text x="${right}" y="${y}" text-anchor="end" class="${valueClass}" ${intro?`fill="${heat}"`:''}>${sgn(result.tau[j])}</text><rect x="${left}" y="${y+11}" width="${width}" height="15" fill="var(--soft)"/><line x1="${x(0)}" y1="${y+7}" x2="${x(0)}" y2="${y+32}" stroke="var(--muted)" stroke-width=".7"/>`;
+      if(intro){const value=result.tau[j];s+=`<rect class="torque-heat-bar" x="${Math.min(x(0),x(value))}" y="${y+11}" width="${Math.abs(x(value)-x(0))}" height="15" fill="${heat}"><title>J${j+1} 重力补偿 ${value.toFixed(6)} N·m</title></rect>`;}
+      else {let pos=0,neg=0;for(const [val,color,name] of [[result.acc[j],'inertia','惯性'],[result.c[j],'velocity','速度项'],[result.g[j],'gravity','重力']]){const from=val>=0?pos:neg,to=from+val;if(val>=0)pos=to;else neg=to;s+=`<rect x="${Math.min(x(from),x(to))}" y="${y+11}" width="${Math.abs(x(to)-x(from))}" height="15" fill="var(--${color})"><title>J${j+1} ${name} ${val.toFixed(6)} N·m</title></rect>`;}}
+      const tx=x(result.tau[j]);s+=`<path d="M${tx},${y+25} l4,5 -4,5 -4,-5 Z" fill="${heat||'var(--ink)'}"/>`;
       if(j===state.j)s+=`<line x1="${left}" y1="${y+40}" x2="${right}" y2="${y+40}" stroke="var(--inertia)" stroke-width="1"/>`;
+      s+='</g>';
     }
     for(let col=0;col<cols;col++){const left=col*cellW+10,right=(col+1)*cellW-(col===0&&wide?24:4);s+=`<text x="${left}" y="${h-7}">${fmt(-bound,1)}</text><text x="${(left+right)/2}" y="${h-7}" text-anchor="middle">0</text><text x="${right}" y="${h-7}" text-anchor="end">${fmt(bound,1)} N·m</text>`;}
     svg.innerHTML=s;svgFinish(svg);
