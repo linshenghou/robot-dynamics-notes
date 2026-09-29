@@ -17,7 +17,7 @@ CSS = '''
 '''
 src = ROOT/'src'
 gravity = (src/'gravity/gravity.template.html').read_text()
-for key, file in [('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__GRAVITY_GEOMETRY__','gravity/gravity_geometry.js'),('__GRAVITY_APP__','gravity/gravity.js')]:
+for key, file in [('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__ALL_JOINT_SCENE__','workbench/lab_scene.js'),('__GRAVITY_GEOMETRY__','gravity/gravity_geometry.js'),('__COUPLING_VIEW__','gravity/coupling_view.js'),('__GRAVITY_APP__','gravity/gravity.js')]:
     gravity=gravity.replace(key,(src/file).read_text())
 license_text=(src/'model/LICENSE').read_text()
 gravity='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YAM 重力补偿实验</title><style>'+CSS+'</style></head><body><!-- I2RT model and reduced geometry: '+license_text+' -->'+gravity+HEIGHT+'</body></html>'

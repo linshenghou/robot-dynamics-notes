@@ -21,7 +21,7 @@
 <section id="live-lab" aria-labelledby="live-title">
 <div class="lab-heading"><div><span class="live-badge"><i></i>静止悬停</span><h1 id="live-title">转动关节，看见力矩。</h1></div><div class="lab-meta">I2RT YAM <span>6 DOF / 固定基座</span></div></div>
 <div class="workbench-shell"><iframe id="workbench-frame" src="labs/workbench.html?intro=1" title="YAM 机械臂与六关节力矩实验台" style="height:562px"></iframe><div class="workbench-footer"><span><i class="legend-dot amber"></i>重力与补偿数值 <span class="footer-divider">/</span><i class="legend-dot mint"></i>选中的关节</span><span>模型计算 · 无外力 · 不积分运动 <a href="labs/workbench.html" target="_blank" rel="noreferrer">展开计算 ↗</a></span></div></div>
-<div class="experiment-prompt"><span class="prompt-index">试一试</span><p>只改变 <b>J3</b> 的角度，留意 <b>J2</b> 的力矩。<span>它们为什么会一起变化？</span></p><button id="begin-learning" type="button">带着这个问题，往下学 <span>↓</span></button></div>
+<div class="experiment-prompt"><span class="prompt-index">试一试</span><p>转动一个下游关节，留意<b>所有上游关节</b>的力矩。<span>哪些会变化，哪些仍为零？</span></p><button id="begin-learning" type="button">带着这个问题，往下学 <span>↓</span></button></div>
 </section>
 
 <article class="page" id="start" data-title="交互实验台">
@@ -37,9 +37,9 @@
 
 <article class="page" id="gravity" data-title="先让机械臂悬停" hidden><div class="lesson-divider"><span>01 / 从刚才的观察开始</span></div><h1>这些补偿力矩，是怎么算出来的？</h1><p class="lede">先让所有关节静止。没有外部接触，忽略摩擦与弹性，只留下重力。</p>
 <div class="formula big"><span class="ghost">M(q)q̈ + C(q,q̇)q̇ + </span><span class="gravity">g(q)</span> = τ + <span class="ghost">τ<sub>ext</sub></span><small>静止：q̇ = 0，q̈ = 0，无外部接触：τ<sub>ext</sub> = 0 → τ = g(q)</small></div>
-<div class="reading"><p>机械臂伸出去时，后面每根连杆的重量都会作用到上游关节。改变角度，质心与关节轴之间的几何关系改变，所需补偿力矩也随之改变。</p><p><strong>试着做：</strong>先改变 J2，再选择观察 J2 的计算；接着只改变 J3，看 J2 的补偿是否也会变化。</p></div>
-<div class="experiment frame-wrap"><div class="experiment-header"><b>实验 01 · YAM 静止悬停</b><a href="labs/gravity.html" target="_blank" rel="noreferrer">独立打开 ↗</a></div><iframe data-src="labs/gravity.html" title="YAM 六关节重力补偿实验" style="height:1150px"></iframe><div class="experiment-footer">这里每次拖动都比较一个新的静止姿态，没有积分运动。青绿色为电机补偿，暖橙色为真实重力。参数来自模型，不是实机测量。</div></div>
-<div class="quiz" data-answer="1" data-explanation="J3 会改变后续连杆相对于 J2 的位置，所以 J2 的力矩一般也会变化。g₂ 是整个相关姿态的函数，并非只依赖 q₂。"><div class="quiz-title">先预测，再验证</div><p>保持 J2 角度不动，只改变 J3，J2 的重力补偿会不会变？</p><div class="quiz-options"><button>不会，只由 J2 角度决定</button><button>一般会，因为后续质心移动了</button></div><p class="quiz-feedback" aria-live="polite"></p></div>
+<div class="reading"><p>机械臂伸出去时，后面每根连杆的重量都会作用到上游关节。改变角度，质心与关节轴之间的几何关系改变，所需补偿力矩也随之改变。</p><p><strong>试着做：</strong>选择一个下游关节，点击“试转 +30°”，同时比较六个关节的参考力矩、当前力矩和变化量。留意自己的角度没动、补偿却变了的上游关节。</p></div>
+<div class="experiment frame-wrap"><div class="experiment-header"><b>实验 01 · YAM 静止悬停</b><a href="labs/gravity.html" target="_blank" rel="noreferrer">独立打开 ↗</a></div><iframe data-src="labs/gravity.html" title="YAM 六关节重力补偿实验" style="height:1150px"></iframe><div class="experiment-footer">这里每次拖动都比较一个新的静止姿态，没有积分运动。青绿色标出输入关节及随动结构，橙色为真实重力。改变输入关节时，会把当前姿态设为新的比较参考；详细计算可在六关节对比下方展开。参数来自模型，不是实机测量。</div></div>
+<div class="quiz" data-answer="1" data-explanation="下游关节会移动后续连杆的质心，所以多个上游关节的力矩都可能变化。是否变化、变化多少还取决于各个轴的方向与姿态；竖直轴就是补偿近乎为零的例子。"><div class="quiz-title">先预测，再验证</div><p>保持上游关节的角度不动，只转动下游关节，上游的重力补偿会不会变？</p><div class="quiz-options"><button>不会，只由该关节自己的角度决定</button><button>一般会，因为后续质心移动了</button></div><p class="quiz-feedback" aria-live="polite"></p></div>
 <div class="reading"><h2>模型究竟提供了什么？</h2><div class="mini-flow"><span>URDF：质量、局部质心</span><i>→</i><span>正运动学：世界质心</span><i>→</i><span>重力、力臂、关节轴</span><i>→</i><span>各关节的 g(q)</span></div><p>质量、安装方向、负载和重力方向固定后，重力项只随姿态变化。它不需要先计算整个质量矩阵 M(q)。</p><details><summary>展开：本实验的模型与假设</summary><div class="inside">YAM v1，六个转动关节；两指锁定于 URDF 零位置。含夹爪和手指，运动部分质量 4.110856 kg。基座固定，世界 Z 轴向上。不包含额外负载、摩擦、柔性和独立的电机反射转子惯量。显示网格做过简化，惯性与几何计算参数保留原始精度。<a href="#sources">查看模型来源与验证方法</a>。</div></details></div><div class="next"><span>你已经看到了结果。接下来亲手算一次。</span><a href="#planar">02 · 把重力算出来 →</a></div></article>
 
 <article class="page" id="planar" data-title="把重力算出来" hidden><div class="kicker">02 / 从一根杆到两根杆</div><h1>重量没有变，<br>变化的是力臂。</h1><p class="lede">从水平线起算角度，逆时针为正。杆先假设没有质量，把质量集中在末端。</p>

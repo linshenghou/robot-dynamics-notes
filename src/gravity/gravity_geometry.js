@@ -16,6 +16,19 @@ const GravityGeometry = (()=>{
     const rows=frames.map(f=>({name:f.link.name,mass:f.link.mass,com:f.com,x:D.dot(D.sub(f.com,p),ex),y:D.dot(D.sub(f.com,p),ey),torque:result.byLink[f.link.name][j]}));
     return {j,a,p,frames,mass,com,sinTilt,degenerate,ex,ey,x,y,force,torque,rows};
   }
-  return {summarize};
+  // Compare two static poses. The UI holds every coordinate except driver fixed.
+  // Rows remain physical links, not joints; their weights load their ancestor joints.
+  function compare(D,model,q,referenceQ,driver){
+    const zero=Array(6).fill(0),current=D.inverse(model,q,zero,zero),reference=D.inverse(model,referenceQ,zero,zero);
+    const moved=Object.values(current.fk.frames).filter(f=>f.ancestors.includes(driver));
+    const delta=current.tau.map((v,j)=>v-reference.tau[j]);
+    const rows=Object.values(current.fk.frames).filter(f=>f.ancestors.length).map(f=>({
+      name:f.link.name,mass:f.link.mass,ancestors:f.ancestors,moved:f.ancestors.includes(driver),
+      current:current.byLink[f.link.name],reference:reference.byLink[f.link.name],
+      delta:current.byLink[f.link.name].map((v,j)=>v-reference.byLink[f.link.name][j])
+    }));
+    return {current,reference,delta,rows,movedMass:moved.reduce((s,f)=>s+f.link.mass,0),infos:zero.map((_,j)=>summarize(D,model,current,j))};
+  }
+  return {summarize,compare};
 })();
 if(typeof module!=='undefined' && module.exports) module.exports=GravityGeometry;

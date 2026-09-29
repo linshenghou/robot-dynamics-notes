@@ -271,12 +271,12 @@ const YamLabMath = (() => {
 if(typeof module!=='undefined'&&module.exports)module.exports=YamLabMath;
 
 const YamLabScene = (()=>{
-  function create(canvas,D,model){
+  function create(canvas,D,model,palette={}){
     const ctx=canvas.getContext('2d'),active=model.joints.filter(j=>j.active),meshes=Object.values(model.links).map(link=>({name:link.name,vertices:link.mesh.vertices.map(v=>D.add(link.visual.xyz,D.mv(D.rpy(link.visual.rpy),v))),triangles:link.mesh.triangles}));
     let colors={},hits=[];
     function theme(){
       const probe=document.createElement('span'),pixel=document.createElement('canvas');pixel.width=pixel.height=1;const pc=pixel.getContext('2d');document.body.append(probe);
-      for(const name of ['ink','muted','surface','line','inertia','gravity']){probe.style.color=`var(--${name})`;const css=getComputedStyle(probe).color;pc.fillStyle=css;pc.fillRect(0,0,1,1);colors[name]={css,rgb:[...pc.getImageData(0,0,1,1).data].slice(0,3)};}probe.remove();
+      for(const name of ['ink','muted','surface','line','inertia','gravity']){probe.style.color=`var(--${palette[name]||name})`;const css=getComputedStyle(probe).color;pc.fillStyle=css;pc.fillRect(0,0,1,1);colors[name]={css,rgb:[...pc.getImageData(0,0,1,1).data].slice(0,3)};}probe.remove();
     }
     const rgb=a=>`rgb(${a.map(x=>Math.max(0,Math.min(255,Math.round(x)))).join(',')})`;
     function draw(result,state){
@@ -322,7 +322,7 @@ const YamLabScene = (()=>{
           hits.push({j:n.j,x:x-5,y:n.y-16,w:len+10,h:32});
         }
       }
-      ctx.fillStyle=colors.muted.css;ctx.fillText('拖动旋转 · 点击 J 标签观察',5,13);
+      ctx.fillStyle=colors.muted.css;ctx.fillText(state.hint||'拖动旋转 · 点击 J 标签观察',5,13);
       const length=.1*scale;line([w-length-10,h-14],[w-10,h-14],colors.muted.css);ctx.fillText('0.10 m',w-length-10,h-27);
       canvas.setAttribute('aria-label','当前六关节驱动力矩 / N·m：'+result.tau.map((t,j)=>`J${j+1} ${t.toFixed(4)}`).join('，')+'。拖动旋转视角。');
     }

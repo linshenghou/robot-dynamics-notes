@@ -1,7 +1,7 @@
 (() => {
   const root=document.getElementById('yam-gravity-explorer'), D=YamDynamics, model=YAM_GRAVITY_MODEL;
-  const $=id=>root.querySelector('#'+id), active=model.joints.filter(j=>j.active), z=Array(6).fill(0);
-  const state={q:[0,1.3,1,0,0,0],j:1,yaw:.7,pitch:.4};
+  const $=id=>root.querySelector('#'+id), active=model.joints.filter(j=>j.active);
+  const state={q:[0,1.3,1,0,0,0],j:1,driver:3,referenceQ:null,yaw:.7,pitch:.4};
   const fmt=(v,n=3)=>Math.abs(v)<.5*10**(-n)?(0).toFixed(n):v.toFixed(n);
   const signed=(v,n=3)=>(v>=.5*10**(-n)?'+':'')+fmt(v,n);
   const torqueText=v=>Math.abs(v)<.0005?'≈ 0':signed(v);
@@ -9,80 +9,23 @@
     const s=snapshot?.modelContent||snapshot;
     if(s?.lesson==='yam-gravity'){
       if(Array.isArray(s.q)&&s.q.length===6&&s.q.every(Number.isFinite))state.q=s.q.map((q,i)=>Math.max(active[i].lower,Math.min(active[i].upper,q)));
+      if(Number.isInteger(s.driver)&&s.driver>=0&&s.driver<6)state.driver=s.driver;
+      if(Array.isArray(s.referenceQ)&&s.referenceQ.length===6&&s.referenceQ.every(Number.isFinite))state.referenceQ=s.referenceQ.map((q,i)=>Math.max(active[i].lower,Math.min(active[i].upper,q)));
       if(Number.isInteger(s.j))state.j=Math.max(0,Math.min(5,s.j));
       const p=snapshot?.privateContent;
       if(Number.isFinite(p?.yaw)&&Number.isFinite(p?.pitch)){state.yaw=p.yaw;state.pitch=p.pitch;}
     }
   }
   try { restore(JSON.parse(localStorage.getItem('rdn-gravity-v1') || 'null')); } catch {}
-  function save(){try{localStorage.setItem('rdn-gravity-v1',JSON.stringify({modelContent:{lesson:'yam-gravity',q:state.q,j:state.j},privateContent:{yaw:state.yaw,pitch:state.pitch}}));}catch{}}
+  if(!state.referenceQ||state.q.some((v,i)=>i!==state.driver&&Math.abs(v-state.referenceQ[i])>1e-9))state.referenceQ=state.q.slice();
+  function save(){try{localStorage.setItem('rdn-gravity-v1',JSON.stringify({modelContent:{lesson:'yam-gravity',q:state.q,j:state.j,driver:state.driver,referenceQ:state.referenceQ},privateContent:{yaw:state.yaw,pitch:state.pitch}}));}catch{}}
   $('yg-sliders').innerHTML=active.map((joint,i)=>`<div class="yg-joint-control"><div class="yg-slider-head"><label class="form-label" for="yg-q${i}">J${i+1} 角度</label><span id="yg-angle${i}" class="tabular-nums"></span></div><input class="form-range" id="yg-q${i}" type="range" min="${Math.ceil(joint.lower*180/Math.PI*10)/10}" max="${Math.floor(joint.upper*180/Math.PI*10)/10}" step="0.1" aria-describedby="yg-tau${i}"><div class="yg-torque text-small"><span id="yg-tau${i}" class="tabular-nums"></span><div class="yg-meter" aria-hidden="true"><div id="yg-meter${i}" class="yg-meter-fill"></div></div></div></div>`).join('');
-  const meshes=Object.values(model.links).map(link=>({name:link.name,vertices:link.mesh.vertices.map(v=>D.add(link.visual.xyz,D.mv(D.rpy(link.visual.rpy),v))),triangles:link.mesh.triangles}));
-  const canvas=$('yg-canvas'),ctx=canvas.getContext('2d');let result,info,colors={};
-  function refreshColors(){
-    const probe=document.createElement('span'),pixel=document.createElement('canvas');pixel.width=pixel.height=1;const pc=pixel.getContext('2d');root.append(probe);
-    for(const name of ['foreground','muted','muted-foreground','background','border','viz-series-1','viz-series-2']){
-      probe.style.color=`var(--${name})`;const css=getComputedStyle(probe).color;pc.fillStyle=css;pc.fillRect(0,0,1,1);colors[name]={css,rgb:[...pc.getImageData(0,0,1,1).data].slice(0,3)};
-    }probe.remove();
-  }
-  const rgb=a=>`rgb(${a.map(x=>Math.max(0,Math.min(255,Math.round(x)))).join(',')})`;
-  function renderScene(){
-    if(!result)return;
-    const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(devicePixelRatio||1,2);
-    canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-    const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw),cp=Math.cos(state.pitch),sp=Math.sin(state.pitch);
-    const view=p=>[cy*p[0]-sy*p[1],-sp*(sy*p[0]+cy*p[1])+cp*p[2],cp*(sy*p[0]+cy*p[1])+sp*p[2]];
-    const worldMeshes=meshes.map(m=>{const f=result.fk.frames[m.name],world=m.vertices.map(v=>D.add(f.p,D.mv(f.R,v)));return {...m,world,points:world.map(view)};});
-    const gravityEnd=D.add(info.com,[0,0,-.13]),axisEnd=D.add(info.p,D.scale(info.a,.13));
-    const bounds=worldMeshes.flatMap(m=>m.points).concat([view(gravityEnd),view(axisEnd)]);
-    const minX=Math.min(...bounds.map(p=>p[0])),maxX=Math.max(...bounds.map(p=>p[0])),minY=Math.min(...bounds.map(p=>p[1])),maxY=Math.max(...bounds.map(p=>p[1]));
-    const scale=Math.min((w-100)/Math.max(.36,maxX-minX),(h-94)/Math.max(.42,maxY-minY)),mx=(maxX+minX)/2,my=(maxY+minY)/2;
-    const screen=p=>[(p[0]-mx)*scale+w/2,h/2-(p[1]-my)*scale],proj=p=>screen(view(p));
-    const line=(a,b,c,width=1,dash=[])=>{ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.strokeStyle=c;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([]);};
-    const head=(a,b,c)=>{const t=Math.atan2(b[1]-a[1],b[0]-a[0]);ctx.beginPath();ctx.moveTo(...b);ctx.lineTo(b[0]-8*Math.cos(t-.45),b[1]-8*Math.sin(t-.45));ctx.lineTo(b[0]-8*Math.cos(t+.45),b[1]-8*Math.sin(t+.45));ctx.closePath();ctx.fillStyle=c;ctx.fill();};
-    const arrow=(a,b,c,width=2)=>{const p=proj(a),q=proj(b);line(p,q,c,width);if(Math.hypot(q[0]-p[0],q[1]-p[1])>3)head(p,q,c);};
-    for(let k=-2;k<=4;k++){line(proj([k*.1,-.2,0]),proj([k*.1,.4,0]),colors.border.css);line(proj([-.2,k*.1,0]),proj([.4,k*.1,0]),colors.border.css);}
-    const faces=[],selectedNames=new Set(info.frames.map(f=>f.link.name));
-    for(const mesh of worldMeshes){
-      const highlighted=selectedNames.has(mesh.name),color=colors[highlighted?'viz-series-1':'foreground'].rgb;
-      const base=color.map((v,i)=>v*(highlighted?.55:.38)+colors.background.rgb[i]*(highlighted?.45:.62));
-      for(const tri of mesh.triangles){
-        const p=tri.map(i=>mesh.points[i]),world=tri.map(i=>mesh.world[i]);
-        const normal=D.cross(D.sub(world[1],world[0]),D.sub(world[2],world[0])),n=Math.sqrt(D.dot(normal,normal));if(n<1e-10)continue;
-        const light=.62+.38*Math.abs(D.dot(D.scale(normal,1/n),[.3,-.4,.866]));
-        faces.push({p,depth:p.reduce((s,p)=>s+p[2],0)/3,c:rgb(base.map(v=>v*light))});
-      }
-    }
-    faces.sort((a,b)=>a.depth-b.depth);
-    for(const f of faces){const p=f.p.map(screen);ctx.beginPath();ctx.moveTo(...p[0]);ctx.lineTo(...p[1]);ctx.lineTo(...p[2]);ctx.closePath();ctx.fillStyle=f.c;ctx.fill();}
-    ctx.font=`12px ${getComputedStyle(root).fontFamily}`;ctx.textBaseline='middle';
-    const occupied=[];
-    function label(text,p,dx=10,dy=-14){
-      const len=ctx.measureText(text).width,x=Math.max(5,Math.min(w-len-5,p[0]+dx));let y=Math.max(14,Math.min(h-22,p[1]+dy));
-      for(let k=0;k<10&&occupied.some(r=>x<r.x+r.w+4&&x+len>r.x-4&&Math.abs(y-r.y)<17);k++)y=Math.max(14,Math.min(h-22,p[1]+dy+(k%2?-1:1)*(22+k*8)));
-      occupied.push({x,y,w:len});ctx.fillStyle=colors.background.css;ctx.globalAlpha=.9;ctx.fillRect(x-3,y-9,len+6,18);ctx.globalAlpha=1;ctx.fillStyle=colors.foreground.css;ctx.fillText(text,x,y);
-    }
-    const blue=colors['viz-series-1'].css,orange=colors['viz-series-2'].css;
-    for(const f of info.frames){const p=proj(f.com);ctx.beginPath();ctx.arc(...p,3,0,2*Math.PI);ctx.fillStyle=colors['muted-foreground'].css;ctx.fill();}
-    line(proj(info.p),proj(info.com),colors['muted-foreground'].css,1,[4,4]);
-    result.fk.jointFrames.forEach((f,i)=>{const p=proj(f.p);ctx.beginPath();ctx.arc(...p,i===state.j?5:2.5,0,2*Math.PI);ctx.fillStyle=i===state.j?blue:colors['muted-foreground'].css;ctx.fill();});
-    arrow(D.add(info.p,D.scale(info.a,-.04)),axisEnd,blue,2.5);
-    label(`J${state.j+1} 正轴`,proj(axisEnd),8,-10);
-    const com=proj(info.com);ctx.beginPath();ctx.moveTo(com[0],com[1]-6);ctx.lineTo(com[0]+6,com[1]);ctx.lineTo(com[0],com[1]+6);ctx.lineTo(com[0]-6,com[1]);ctx.closePath();ctx.fillStyle=orange;ctx.fill();
-    arrow(info.com,gravityEnd,orange,3);label('下游总质心',com,10,-18);label(`重力 ${fmt(info.mass*9.81,2)} N`,proj(gravityEnd),10,14);
-    if(Math.abs(info.torque)>.0005){
-      const direction=Math.sign(info.torque),arc=[];
-      for(let k=0;k<=35;k++){const t=.4+direction*k/35*4.2;arc.push(proj(D.add(info.p,D.add(D.scale(info.ex,.065*Math.cos(t)),D.scale(info.ey,.065*Math.sin(t))))));}
-      ctx.beginPath();ctx.moveTo(...arc[0]);arc.slice(1).forEach(p=>ctx.lineTo(...p));ctx.strokeStyle=blue;ctx.lineWidth=2.5;ctx.stroke();head(arc[arc.length-2],arc[arc.length-1],blue);
-      label(`电机 ${signed(info.torque)} N·m`,proj(info.p),-90,35);
-    }else label('绕此轴的补偿 ≈ 0',proj(info.p),-80,28);
-    ctx.fillStyle=colors['muted-foreground'].css;ctx.fillText('箭头示方向 · 拖动旋转视角',7,14);
-    const l=.1*scale;line([w-l-14,h-18],[w-14,h-18],colors.foreground.css,2);ctx.fillStyle=colors.foreground.css;ctx.fillText('0.10 m',w-l-14,h-32);
-    canvas.setAttribute('aria-label',`J${state.j+1} 下游总质量 ${fmt(info.mass)} kg，总重力 ${fmt(info.mass*9.81,2)} N，所需电机补偿 ${fmt(info.torque,6)} N·m。拖动可旋转视角。`);
-  }
+  const canvas=$('yg-canvas'),overview=YamLabScene.create(canvas,D,model,{ink:'foreground',muted:'muted-foreground',surface:'background',line:'border',inertia:'viz-series-1',gravity:'viz-series-2'});let result,info,comparison;
+  function renderScene(){if(result)overview.draw(result,{...state,j:state.driver,panel:'mass',com:true,hint:'拖动旋转 · 点击 J 标签选择转动关节'});}
+  function refreshColors(){overview.theme();}
   function svgText(svg){svg.querySelectorAll('text').forEach(t=>{t.style.fill='var(--foreground)';t.style.fontSize='12px';});}
   function renderPlane(){
-    if(!info)return;const svg=$('yg-plane'),w=svg.clientWidth,h=246;
+    if(!info||!$('yg-detail').open)return;const svg=$('yg-plane'),w=svg.clientWidth,h=246;
     svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('height',h);
     const blue='var(--viz-series-1)',orange='var(--viz-series-2)';
     let s=`<title>J${state.j+1} 的转动平面：从正轴端看向关节</title><defs><marker id="yg-blue-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="${blue}"/></marker><marker id="yg-orange-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="${orange}"/></marker></defs><text x="6" y="15">从 J${state.j+1} 正轴端看向关节</text>`;
@@ -117,7 +60,7 @@
     s+=`<text class="axis-title" data-axis="x" x="${left+plotW/2}" y="${h-3}" text-anchor="middle">补偿力矩 / N·m</text><text class="axis-title" data-axis="y" x="4" y="10">连杆</text>`;svg.innerHTML=s;svgText(svg);
   }
   function update(){
-    result=D.inverse(model,state.q,z,z);info=GravityGeometry.summarize(D,model,result,state.j);
+    comparison=GravityGeometry.compare(D,model,state.q,state.referenceQ,state.driver);result=comparison.current;info=comparison.infos[state.j];
     const max=Math.max(.01,...result.tau.map(Math.abs));
     state.q.forEach((q,i)=>{
       $('yg-q'+i).value=q*180/Math.PI;$('yg-angle'+i).textContent=fmt(q*180/Math.PI,1)+'°';
@@ -129,20 +72,42 @@
     $('yg-force').textContent=info.degenerate?'≈ 0 N':`${fmt(info.mass*9.81,3)} × ${fmt(info.sinTilt,4)} = ${fmt(info.force,3)} N`;
     $('yg-arm').textContent=info.degenerate?'—（重力几乎沿轴）':signed(info.x,4)+' m';
     $('yg-product').textContent=info.degenerate?'≈ 0 N·m':`${fmt(info.force,3)} × (${signed(info.x,4)}) ≈ ${signed(info.torque)} N·m`;
+    GravityCouplingView.render(root,comparison,state,active);
     renderScene();renderPlane();renderBreakdown();root.dataset.ready='true';root.dataset.torques=JSON.stringify(result.tau);
   }
-  for(let i=0;i<6;i++)$('yg-q'+i).addEventListener('input',e=>{state.q[i]=Number(e.target.value)*Math.PI/180;update();save();});
+  function selectDriver(i){
+    if(i!==state.driver){state.referenceQ=state.q.slice();state.driver=i;}
+    update();save();
+  }
+  function changeAngle(i,angle){
+    if(i!==state.driver){state.referenceQ=state.q.slice();state.driver=i;}
+    state.q[i]=Math.max(active[i].lower,Math.min(active[i].upper,angle));update();save();
+  }
+  $('yg-chain').innerHTML=active.map((_,i)=>'<button type="button" data-driver="'+i+'"><b>J'+(i+1)+'</b><small></small></button>').join('<span aria-hidden="true">→</span>');
+  $('yg-chain').addEventListener('click',e=>{const b=e.target.closest('[data-driver]');if(b)selectDriver(Number(b.dataset.driver));});
+  $('yg-driver').addEventListener('change',e=>selectDriver(Number(e.target.value)));
+  $('yg-coupled-angle').addEventListener('input',e=>changeAngle(state.driver,Number(e.target.value)*Math.PI/180));
+  $('yg-nudge').addEventListener('click',()=>changeAngle(state.driver,Math.min(Number($('yg-coupled-angle').max)*Math.PI/180,state.q[state.driver]+Math.PI/6)));
+  $('yg-reference').addEventListener('click',()=>{state.referenceQ=state.q.slice();update();save();});
+  $('yg-revert').addEventListener('click',()=>{state.q=state.referenceQ.slice();update();save();});
+  $('yg-response-grid').addEventListener('click',e=>{
+    const b=e.target.closest('[data-detail-joint]');if(!b)return;
+    state.j=Number(b.dataset.detailJoint);$('yg-detail').open=true;update();save();$('yg-detail').scrollIntoView({block:'start'});$('yg-selected').focus({preventScroll:true});
+  });
+  $('yg-detail').addEventListener('toggle',()=>{renderPlane();renderBreakdown();});
+  for(let i=0;i<6;i++)$('yg-q'+i).addEventListener('input',e=>changeAngle(i,Number(e.target.value)*Math.PI/180));
   $('yg-selected').addEventListener('change',e=>{state.j=Number(e.target.value);update();save();});
   $('yg-side').addEventListener('click',()=>{state.yaw=0;state.pitch=0;renderScene();save();});
   $('yg-iso').addEventListener('click',()=>{state.yaw=.7;state.pitch=.4;renderScene();save();});
-  $('yg-axis').addEventListener('click',()=>{state.pitch=Math.asin(Math.max(-1,Math.min(1,info.a[2])));state.yaw=Math.atan2(info.a[0],info.a[1]);renderScene();save();});
+  $('yg-axis').addEventListener('click',()=>{const a=result.fk.axes[state.driver];state.pitch=Math.asin(Math.max(-1,Math.min(1,a[2])));state.yaw=Math.atan2(a[0],a[1]);renderScene();save();});
   $('yg-breakdown').addEventListener('toggle',renderBreakdown);
-  let drag=null;
-  canvas.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';});
+  let drag=null,dragStart=null;
+  canvas.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];dragStart=drag.slice();canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';});
   canvas.addEventListener('pointermove',e=>{if(!drag)return;state.yaw+=(e.clientX-drag[0])*.008;state.pitch=Math.max(-1.55,Math.min(1.55,state.pitch+(e.clientY-drag[1])*.006));drag=[e.clientX,e.clientY];renderScene();});
-  const release=()=>{drag=null;canvas.style.cursor='grab';save();};canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
+  const release=e=>{if(e.type==='pointerup'&&dragStart&&Math.hypot(e.clientX-dragStart[0],e.clientY-dragStart[1])<5){const r=canvas.getBoundingClientRect(),j=overview.pick(e.clientX-r.x,e.clientY-r.y);if(j!==undefined)selectDriver(j);}drag=null;dragStart=null;canvas.style.cursor='grab';save();};canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
   new ResizeObserver(()=>{renderScene();renderPlane();renderBreakdown();}).observe(root);
   new MutationObserver(()=>{refreshColors();renderScene();}).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{refreshColors();renderScene();});
+  window.yamGravitySnapshot=()=>({q:state.q.slice(),referenceQ:state.referenceQ.slice(),driver:state.driver,g:result.tau.slice(),referenceG:comparison.reference.tau.slice(),delta:comparison.delta.slice(),rows:comparison.rows.map(r=>({...r})),infos:comparison.infos.map(i=>({mass:i.mass,force:i.force,arm:i.x,degenerate:i.degenerate}))});
   refreshColors();update();
 })();

@@ -1,21 +1,37 @@
 <div id="yam-gravity-explorer">
-  <h3>YAM · 静止悬停的重力补偿</h3>
+  <h3>YAM · 一个关节转动，整条链如何响应</h3>
   <div class="text-small">基座固定 · 速度、加速度、外力均为 0 · 含夹爪</div>
   <div class="yg-main">
     <div class="yg-scene">
-      <canvas id="yg-canvas" role="img" aria-label="YAM 机械臂：所选关节轴、下游连杆、总质心和重力；拖动可旋转视角"></canvas>
+      <canvas id="yg-canvas" role="img" aria-label="YAM 机械臂：六关节补偿力矩与随输入关节转动的下游连杆；拖动可旋转视角"></canvas>
       <div class="viz-row">
         <button type="button" class="btn btn-ghost" id="yg-side">侧视</button>
         <button type="button" class="btn btn-ghost" id="yg-iso">斜视</button>
-        <button type="button" class="btn btn-ghost" id="yg-axis">沿所选关节轴看</button>
+        <button type="button" class="btn btn-ghost" id="yg-axis">沿转动关节轴看</button>
       </div>
-      <div class="yg-legend text-small"><span><i class="yg-dot"></i>下游各连杆质心</span><span><i class="yg-com"></i>下游总质心 / 重力</span><span><i class="yg-axis"></i>关节正轴 / 电机补偿</span></div>
+      <div class="yg-legend text-small"><span><i class="yg-axis"></i>随输入关节转动的下游结构</span><span><i class="yg-com"></i>各连杆的重力</span><span><i class="yg-dot"></i>同时显示六关节补偿</span></div>
     </div>
     <div><div class="text-small yg-bar-caption">补偿力矩条：左 − / 右 ＋</div><div id="yg-sliders" aria-label="六个关节角度与重力补偿力矩"></div></div>
   </div>
-  <hr>
+  <section id="yg-coupling" aria-labelledby="yg-coupling-title">
+    <div class="yg-section-heading"><div><div class="yg-eyebrow">一个角度输入 / 六个力矩输出</div><h3 id="yg-coupling-title">向上游看，每个关节都在承担什么？</h3></div><span class="yg-unit">力矩 / N·m</span></div>
+    <p class="yg-intro">转动下游关节，会移动后续连杆的质心，从而改变它们对上游各轴的重力矩。选一个关节，固定其余角度，对比整条链。</p>
+    <div class="yg-driver-controls">
+      <div class="yg-driver-choice"><label for="yg-driver">只转动这个关节</label><select id="yg-driver"><option value="0">J1</option><option value="1">J2</option><option value="2">J3</option><option value="3" selected>J4</option><option value="4">J5</option><option value="5">J6</option></select></div>
+      <div class="yg-driver-range"><label for="yg-coupled-angle"><span>参考角度 → 当前角度</span><output id="yg-driver-readout"></output></label><input id="yg-coupled-angle" type="range" step="0.1"></div>
+      <div class="yg-compare-actions"><button id="yg-nudge" type="button">试转 +30°</button><button id="yg-revert" type="button">回到参考</button><button id="yg-reference" type="button">设为新参考</button></div>
+    </div>
+    <div id="yg-chain" class="yg-chain" role="group" aria-label="从基座到末端的关节顺序；选择转动关节"></div>
+    <p id="yg-scope" class="yg-scope"></p>
+    <div class="yg-comparison-key"><span><i class="yg-reference-key"></i>参考力矩</span><span><i class="yg-current-key"></i>当前力矩</span><span>Δg = 当前 − 参考</span><span>力矩条共用刻度 · 数值四舍五入显示</span></div>
+    <div id="yg-response-grid" class="yg-response-grid" aria-label="六个关节的重力补偿与变化量"></div>
+    <p id="yg-response-summary" class="yg-response-summary" aria-live="polite"></p>
+    <p class="yg-explanation">每张图从该关节的正轴端看向关节，橙色菱形表示<strong>该关节全部下游连杆</strong>的等效总质心。力矩条可横向比较；力臂图各自缩放，箭头仅示方向。上游力矩是否变化、变化多少，还取决于转轴方向和当前姿态。</p>
+    <details id="yg-link-matrix"><summary>追到每根连杆：它的重量由哪些关节承担？</summary><p class="yg-explanation">每一行是一根有质量的连杆，每一列是一个承载关节。高亮行随当前输入关节转动。每格上方是当前补偿贡献，下方是相对参考姿态的变化；沿列求和得到该关节的 g 和 Δg。</p><div class="table-responsive"><table class="yg-coupling-matrix"><thead><tr><th>连杆 / 质量</th><th>J1</th><th>J2</th><th>J3</th><th>J4</th><th>J5</th><th>J6</th></tr></thead><tbody id="yg-matrix-body"></tbody><tfoot id="yg-matrix-total"></tfoot></table></div><p class="yg-explanation">“—”表示关节不在这根连杆的上游，因而不承载该连杆；数值 0 则表示它承载这根连杆，但当前重力绕该轴的力矩为零。这张表是重力贡献表，不是质量矩阵 M。</p></details>
+  </section>
+  <details id="yg-detail"><summary>深入一项：展开某个关节的力臂与轴投影</summary>
   <div class="viz-controls">
-    <label class="form-label" for="yg-selected">力矩计算：观察哪个关节？
+    <label class="form-label" for="yg-selected">详细计算的输出关节
       <select class="form-select" id="yg-selected"><option value="0">J1</option><option value="1" selected>J2</option><option value="2">J3</option><option value="3">J4</option><option value="4">J5</option><option value="5">J6</option></select>
     </label>
     <div id="yg-result" class="tabular-nums" aria-live="polite"></div>
@@ -33,6 +49,7 @@
     <summary>展开：各连杆对所选关节的贡献</summary>
     <svg id="yg-contributions" role="img" aria-label="下游各连杆对所选关节的重力补偿力矩贡献"></svg>
     <div class="table-responsive"><table class="table table-sm tabular-nums"><thead><tr><th>URDF 连杆</th><th>质量 / kg</th><th>带符号力臂 / m</th><th>补偿 / N·m</th></tr></thead><tbody id="yg-link-rows"></tbody><tfoot><tr><th>合计</th><td id="yg-mass-sum"></td><td>—</td><td id="yg-torque-sum"></td></tr></tfoot></table></div>
+  </details>
   </details>
   <div class="yg-source text-small">I2RT YAM v1 · URDF 120c3c8 · 两指锁定在 0 · 无额外负载 · 刚体模型计算值</div>
 </div>
@@ -69,10 +86,91 @@
    #yam-gravity-explorer .yg-numbers { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
    #yam-gravity-explorer .yg-torque { flex-wrap:wrap; gap:4px; }
  }
+
+ :root{--mono:'SFMono-Regular',Consolas,monospace}
+ #yg-coupling{border-top:1px solid var(--border);padding-top:25px;margin-top:24px}
+ .yg-section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px}
+ .yg-section-heading h3{font-size:23px!important;font-weight:500}
+ .yg-eyebrow{font-size:10px;color:var(--viz-series-1);letter-spacing:1.6px}
+ .yg-unit,.yg-intro{color:var(--muted-foreground);font-size:12px}
+ .yg-unit{white-space:nowrap;font-family:var(--mono)}
+ .yg-intro{line-height:1.9;max-width:920px;margin:12px 0 21px}
+ .yg-driver-controls{display:grid;grid-template-columns:154px minmax(200px,1fr) auto;gap:24px;align-items:center;border:1px solid var(--border);padding:18px;border-radius:8px;background:#182124}
+ .yg-driver-choice{display:flex;align-items:center;gap:9px;font-size:11px}
+ .yg-driver-choice select{font-family:var(--mono)}
+ .yg-driver-range label{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted-foreground)}
+ .yg-driver-range output{font-family:var(--mono);color:var(--foreground)}
+ .yg-driver-range input{margin:11px 0 0}
+ .yg-compare-actions{display:flex;gap:7px;flex-wrap:wrap}
+ .yg-compare-actions button{font-size:11px;padding:7px 9px}
+ #yg-nudge{color:var(--viz-series-1);border-color:#45695d}
+ button:disabled{opacity:.4;cursor:default}
+ .yg-chain{display:flex;gap:10px;align-items:center;margin:24px 0 14px}
+ .yg-chain>button{flex:1;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);min-width:0}
+ .yg-chain b{font:13px var(--mono)}
+ .yg-chain small{font-size:10px;color:var(--muted-foreground)}
+ .yg-chain>span{color:var(--muted-foreground);font-size:11px}
+ .yg-chain [data-relation=upstream]{border-color:#3e6255;background:#1a2724;color:var(--viz-series-1)}
+ .yg-chain [aria-pressed=true]{border-color:var(--viz-series-2);background:#2a241e;color:var(--viz-series-2)}
+ .yg-chain [aria-pressed=true] small{color:var(--viz-series-2)}
+ .yg-scope{font-size:12px;line-height:1.9;color:var(--muted-foreground);margin:0 0 24px}
+ .yg-comparison-key{display:flex;gap:15px;flex-wrap:wrap;font-size:10px;color:var(--muted-foreground);margin-bottom:12px}
+ .yg-comparison-key span{display:flex;align-items:center;gap:6px}
+ .yg-comparison-key i{display:inline-block;width:17px;height:6px}
+ .yg-reference-key{border:1px solid var(--muted-foreground)}
+ .yg-current-key{background:var(--viz-series-1)}
+ .yg-response-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+ .yg-response-card{border:1px solid var(--border);border-radius:8px;padding:17px 18px 10px;background:#151d20;min-width:0}
+ .yg-response-card.upstream{border-top:2px solid #578e7a}
+ .yg-response-card.driver{border-top:2px solid var(--viz-series-2)}
+ .yg-card-head{display:flex;justify-content:space-between;align-items:center}
+ .yg-card-head b{font:16px var(--mono);font-weight:500}
+ .yg-card-head span{font-size:10px;color:var(--muted-foreground)}
+ .upstream .yg-card-head span{color:var(--viz-series-1)}
+ .driver .yg-card-head span{color:var(--viz-series-2)}
+ .yg-card-values{display:flex;align-items:center;gap:13px;margin:17px 0 10px;font-family:var(--mono)}
+ .yg-card-values strong{font-size:23px;font-weight:500}
+ .yg-reference-value{font-size:18px;color:var(--muted-foreground)}
+ .yg-card-values small{display:block;font:10px/1.8 'PingFang SC',sans-serif;color:var(--muted-foreground);margin-top:3px}
+ .yg-transition{font-size:13px;color:var(--muted-foreground);margin-bottom:13px}
+ .yg-delta{font:13px var(--mono);color:var(--muted-foreground)}
+ .yg-delta.changed{color:var(--viz-series-1)}
+ .yg-delta output{font-size:20px;font-weight:500;margin-left:7px}
+ .yg-delta span{font-size:10px}
+ .yg-compare-bars{display:block;width:100%;height:37px;margin:10px 0 3px}
+ .yg-mini-plane{display:block;width:100%;height:150px}
+ .yg-mini-plane text{font:11px 'PingFang SC',sans-serif;fill:var(--muted-foreground)}
+ .yg-card-calc{font:11px/1.7 var(--mono);text-align:center;color:var(--foreground);min-height:32px;padding-top:7px}
+ .yg-card-bottom{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;border-top:1px solid var(--border);padding-top:7px;margin-top:6px;color:var(--muted-foreground);font-size:10px}
+ .yg-card-bottom button{border:0;padding:4px 0;font-size:10px;color:var(--viz-series-1);background:transparent}
+ .yg-response-summary{font-size:12px;line-height:1.9;border-left:2px solid var(--viz-series-1);background:#1b2925;padding:12px 16px;margin:18px 0 12px}
+ .yg-explanation{font-size:11px;line-height:1.9;color:var(--muted-foreground);margin:14px 0}
+ #yg-detail>summary,#yg-link-matrix>summary{font-size:13px;color:var(--foreground)}
+ #yg-detail .viz-controls{margin-top:22px}
+ .yg-coupling-matrix{min-width:620px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+ .yg-coupling-matrix th{font-weight:400;text-align:left}
+ .yg-coupling-matrix td{text-align:right;background:color-mix(in srgb,var(--viz-series-2) var(--load,0%),transparent)}
+ .yg-coupling-matrix small{display:block;font-size:9px;color:var(--muted-foreground);margin-top:4px}
+ .yg-coupling-matrix th small{font-family:'PingFang SC',sans-serif}
+ .yg-coupling-matrix .yg-moving-link th{color:var(--viz-series-1);border-left:2px solid var(--viz-series-1)}
+ .yg-no-load{color:#61716d;text-align:center!important}
+ .yg-coupling-matrix tfoot td{color:var(--viz-series-1);padding-top:14px}
+ @media(max-width:1000px){.yg-driver-controls{grid-template-columns:154px minmax(0,1fr)}.yg-compare-actions{grid-column:1/-1}.yg-response-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ @media(max-width:580px){
+   .yg-section-heading{align-items:flex-start}.yg-section-heading h3{font-size:20px!important}.yg-unit{font-size:9px;margin-top:5px}
+   .yg-driver-controls{grid-template-columns:1fr;padding:14px;gap:14px}.yg-compare-actions{gap:6px}
+   .yg-driver-range label{flex-direction:column;gap:6px}
+   .yg-chain{gap:4px}.yg-chain>span{display:none}.yg-chain>button{flex-direction:column;gap:4px;padding:8px 1px}.yg-chain b{font-size:12px}.yg-chain small{font-size:9px}
+   .yg-response-grid{grid-template-columns:1fr;gap:13px}.yg-response-card{padding:16px}.yg-mini-plane{height:145px}
+   .yg-coupling-matrix{font-size:11px}.yg-card-calc{font-size:11px}
+   #yg-detail .yg-numbers{grid-template-columns:1fr}
+ }
 </style>
 <script>
 __DYNAMICS_ENGINE__
 const YAM_GRAVITY_MODEL = __MODEL_JSON__;
+__ALL_JOINT_SCENE__
 __GRAVITY_GEOMETRY__
+__COUPLING_VIEW__
 __GRAVITY_APP__
 </script>
