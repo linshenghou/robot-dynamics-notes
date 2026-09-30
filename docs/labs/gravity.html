@@ -26,7 +26,7 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
     <div><div class="text-small yg-bar-caption">补偿力矩条：左 − / 右 ＋</div><div id="yg-sliders" aria-label="六个关节角度与重力补偿力矩"></div></div>
   </div>
   <section id="yg-coupling" aria-labelledby="yg-coupling-title">
-    <div class="yg-section-heading"><div><div class="yg-eyebrow">一个角度输入 / 六个力矩输出</div><h3 id="yg-coupling-title">向上游看，每个关节都在承担什么？</h3></div><span class="yg-unit">力矩 / N·m</span></div>
+    <div class="yg-section-heading"><div><div class="yg-eyebrow">一个角度输入 / 六个力矩输出</div><h3 id="yg-coupling-title">只转一个关节，哪些力矩会变？</h3></div><span class="yg-unit">力矩 / N·m</span></div>
     <p class="yg-intro">转动下游关节，会移动后续连杆的质心，从而改变它们对上游各轴的重力矩。选一个关节，固定其余角度，对比整条链。</p>
     <div class="yg-driver-controls">
       <div class="yg-driver-choice"><label for="yg-driver">只转动这个关节</label><select id="yg-driver"><option value="0">J1</option><option value="1">J2</option><option value="2">J3</option><option value="3" selected>J4</option><option value="4">J5</option><option value="5">J6</option></select></div>
@@ -35,10 +35,11 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
     </div>
     <div id="yg-chain" class="yg-chain" role="group" aria-label="从基座到末端的关节顺序；选择转动关节"></div>
     <p id="yg-scope" class="yg-scope"></p>
-    <div class="yg-comparison-key"><span><i class="yg-reference-key"></i>参考力矩</span><span><i class="yg-current-key"></i>当前力矩</span><span>Δg = 当前 − 参考</span><span>力矩条共用刻度 · 数值四舍五入显示</span></div>
+    <div class="yg-comparison-key"><span>Δg = 当前 − 参考</span><span>变化条在本次姿态下共用刻度；左负、右正</span></div>
+    <div class="yg-response-head" aria-hidden="true"><span>关节</span><span>参考 → 当前 / N·m</span><span>变化 Δg / N·m</span><span></span></div>
     <div id="yg-response-grid" class="yg-response-grid" aria-label="六个关节的重力补偿与变化量"></div>
     <p id="yg-response-summary" class="yg-response-summary" aria-live="polite"></p>
-    <p class="yg-explanation">每张图从该关节的正轴端看向关节，橙色菱形表示<strong>该关节全部下游连杆</strong>的等效总质心。力矩条可横向比较；力臂图各自缩放，箭头仅示方向。上游力矩是否变化、变化多少，还取决于转轴方向和当前姿态。</p>
+    <p class="yg-explanation">同一个关节角度变化，可能同时改变多个上游关节的重力补偿；具体变化取决于质心位置和各关节轴的方向。点击“看力臂”可追到单个关节的几何计算。</p>
     <details id="yg-link-matrix"><summary>追到每根连杆：它的重量由哪些关节承担？</summary><p class="yg-explanation">每一行是一根有质量的连杆，每一列是一个承载关节。高亮行随当前输入关节转动。每格上方是当前补偿贡献，下方是相对参考姿态的变化；沿列求和得到该关节的 g 和 Δg。</p><div class="table-responsive"><table class="yg-coupling-matrix"><thead><tr><th>连杆 / 质量</th><th>J1</th><th>J2</th><th>J3</th><th>J4</th><th>J5</th><th>J6</th></tr></thead><tbody id="yg-matrix-body"></tbody><tfoot id="yg-matrix-total"></tfoot></table></div><p class="yg-explanation">“—”表示关节不在这根连杆的上游，因而不承载该连杆；数值 0 则表示它承载这根连杆，但当前重力绕该轴的力矩为零。这张表是重力贡献表，不是质量矩阵 M。</p></details>
   </section>
   <details id="yg-detail"><summary>深入一项：展开某个关节的力臂与轴投影</summary>
@@ -126,35 +127,34 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
  .yg-chain [aria-pressed=true]{border-color:var(--viz-series-2);background:#2a241e;color:var(--viz-series-2)}
  .yg-chain [aria-pressed=true] small{color:var(--viz-series-2)}
  .yg-scope{font-size:12px;line-height:1.9;color:var(--muted-foreground);margin:0 0 24px}
- .yg-comparison-key{display:flex;gap:15px;flex-wrap:wrap;font-size:10px;color:var(--muted-foreground);margin-bottom:12px}
- .yg-comparison-key span{display:flex;align-items:center;gap:6px}
- .yg-comparison-key i{display:inline-block;width:17px;height:6px}
- .yg-reference-key{border:1px solid var(--muted-foreground)}
- .yg-current-key{background:var(--viz-series-1)}
- .yg-response-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
- .yg-response-card{border:1px solid var(--border);border-radius:8px;padding:17px 18px 10px;background:#151d20;min-width:0}
- .yg-response-card.upstream{border-top:2px solid #578e7a}
- .yg-response-card.driver{border-top:2px solid var(--viz-series-2)}
- .yg-card-head{display:flex;justify-content:space-between;align-items:center}
- .yg-card-head b{font:16px var(--mono);font-weight:500}
- .yg-card-head span{font-size:10px;color:var(--muted-foreground)}
- .upstream .yg-card-head span{color:var(--viz-series-1)}
- .driver .yg-card-head span{color:var(--viz-series-2)}
- .yg-card-values{display:flex;align-items:center;gap:13px;margin:17px 0 10px;font-family:var(--mono)}
- .yg-card-values strong{font-size:23px;font-weight:500}
- .yg-reference-value{font-size:18px;color:var(--muted-foreground)}
- .yg-card-values small{display:block;font:10px/1.8 'PingFang SC',sans-serif;color:var(--muted-foreground);margin-top:3px}
- .yg-transition{font-size:13px;color:var(--muted-foreground);margin-bottom:13px}
- .yg-delta{font:13px var(--mono);color:var(--muted-foreground)}
- .yg-delta.changed{color:var(--viz-series-1)}
- .yg-delta output{font-size:20px;font-weight:500;margin-left:7px}
- .yg-delta span{font-size:10px}
- .yg-compare-bars{display:block;width:100%;height:37px;margin:10px 0 3px}
- .yg-mini-plane{display:block;width:100%;height:150px}
- .yg-mini-plane text{font:11px 'PingFang SC',sans-serif;fill:var(--muted-foreground)}
- .yg-card-calc{font:11px/1.7 var(--mono);text-align:center;color:var(--foreground);min-height:32px;padding-top:7px}
- .yg-card-bottom{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;border-top:1px solid var(--border);padding-top:7px;margin-top:6px;color:var(--muted-foreground);font-size:10px}
- .yg-card-bottom button{border:0;padding:4px 0;font-size:10px;color:var(--viz-series-1);background:transparent}
+ .yg-comparison-key{display:flex;gap:20px;flex-wrap:wrap;font-size:10px;color:var(--muted-foreground);margin-bottom:18px}
+ .yg-response-head,.yg-response-row{display:grid;grid-template-columns:145px minmax(200px,1fr) minmax(170px,.72fr) 78px;gap:18px;align-items:center}
+ .yg-response-head{padding:0 17px 9px;color:var(--muted-foreground);font-size:10px;letter-spacing:.3px}
+ .yg-response-grid{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#151d20}
+ .yg-response-row{min-height:70px;padding:11px 16px;border-top:1px solid var(--border);position:relative}
+ .yg-response-row:first-child{border-top:0}
+ .yg-response-row:before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent}
+ .yg-response-row.upstream:before{background:var(--viz-series-1)}
+ .yg-response-row.driver:before{background:var(--viz-series-2)}
+ .yg-response-identity{display:flex;align-items:baseline;gap:12px;min-width:0}
+ .yg-response-identity b{font:500 17px var(--mono);color:var(--foreground)}
+ .yg-response-identity small{font-size:10px;color:var(--muted-foreground);white-space:nowrap}
+ .yg-response-row.upstream .yg-response-identity small{color:var(--viz-series-1)}
+ .yg-response-row.driver .yg-response-identity small{color:var(--viz-series-2)}
+ .yg-value-pair{display:flex;align-items:center;gap:12px;white-space:nowrap;font:14px var(--mono);font-variant-numeric:tabular-nums}
+ .yg-value-pair span,.yg-value-pair i{color:var(--muted-foreground)}
+ .yg-value-pair i{font-size:12px;font-style:normal}
+ .yg-value-pair strong{font-weight:500;color:var(--foreground)}
+ .yg-change{display:flex;align-items:center;gap:12px;color:var(--muted-foreground);font:14px var(--mono);font-variant-numeric:tabular-nums}
+ .yg-change.changed{color:var(--viz-series-1)}
+ .yg-change output{min-width:72px;text-align:right}
+ .yg-delta-track{height:3px;background:#354449;display:block;flex:1;position:relative;min-width:40px}
+ .yg-zero{position:absolute;left:50%;top:-4px;height:11px;border-left:1px solid #7c8e8d}
+ .yg-delta-fill{position:absolute;top:0;height:3px;background:var(--viz-series-1)}
+ .yg-delta-fill.positive{left:50%}
+ .yg-delta-fill.negative{right:50%}
+ .yg-response-row button{border:0;background:none;padding:4px 0;color:var(--viz-series-1);font-size:10px;white-space:nowrap;text-align:right}
+ .yg-response-row button:hover{text-decoration:underline;text-underline-offset:3px}
  .yg-response-summary{font-size:12px;line-height:1.9;border-left:2px solid var(--viz-series-1);background:#1b2925;padding:12px 16px;margin:18px 0 12px}
  .yg-explanation{font-size:11px;line-height:1.9;color:var(--muted-foreground);margin:14px 0}
  #yg-detail>summary,#yg-link-matrix>summary{font-size:13px;color:var(--foreground)}
@@ -167,14 +167,21 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
  .yg-coupling-matrix .yg-moving-link th{color:var(--viz-series-1);border-left:2px solid var(--viz-series-1)}
  .yg-no-load{color:#61716d;text-align:center!important}
  .yg-coupling-matrix tfoot td{color:var(--viz-series-1);padding-top:14px}
- @media(max-width:1000px){.yg-driver-controls{grid-template-columns:154px minmax(0,1fr)}.yg-compare-actions{grid-column:1/-1}.yg-response-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ @media(max-width:1000px){.yg-driver-controls{grid-template-columns:154px minmax(0,1fr)}.yg-compare-actions{grid-column:1/-1}.yg-response-head,.yg-response-row{grid-template-columns:110px minmax(165px,1fr) minmax(145px,.75fr) 70px;gap:10px}}
+ @media(max-width:650px){
+   .yg-response-head{display:none}
+   .yg-response-row{grid-template-columns:67px minmax(0,1fr) 66px;gap:6px 8px;min-height:76px;padding:10px 11px}
+   .yg-response-identity{grid-row:1/3;display:block}.yg-response-identity b{display:block;font-size:15px}.yg-response-identity small{display:block;font-size:9px;line-height:1.4;white-space:normal}
+   .yg-value-pair{grid-column:2/4;grid-row:1;gap:6px;font-size:12px}
+   .yg-change{grid-column:2;grid-row:2;gap:8px;font-size:12px}.yg-change output{min-width:61px;text-align:left}
+   .yg-response-row button{grid-column:3;grid-row:2;font-size:10px}
+ }
  @media(max-width:580px){
    .yg-section-heading{align-items:flex-start}.yg-section-heading h3{font-size:20px!important}.yg-unit{font-size:9px;margin-top:5px}
    .yg-driver-controls{grid-template-columns:1fr;padding:14px;gap:14px}.yg-compare-actions{gap:6px}
    .yg-driver-range label{flex-direction:column;gap:6px}
    .yg-chain{gap:4px}.yg-chain>span{display:none}.yg-chain>button{flex-direction:column;gap:4px;padding:8px 1px}.yg-chain b{font-size:12px}.yg-chain small{font-size:9px}
-   .yg-response-grid{grid-template-columns:1fr;gap:13px}.yg-response-card{padding:16px}.yg-mini-plane{height:145px}
-   .yg-coupling-matrix{font-size:11px}.yg-card-calc{font-size:11px}
+   .yg-coupling-matrix{font-size:11px}
    #yg-detail .yg-numbers{grid-template-columns:1fr}
  }
 </style>
@@ -405,33 +412,6 @@ const GravityCouplingView=(()=>{
   const signed=(v,n=3)=>(v>=.5*10**(-n)?'+':'')+fmt(v,n);
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const relation=(i,k)=>i<k?'上游承载关节':i===k?'正在转动的关节':'下游关节';
-  const line=(a,b,color,extra='')=>'<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+b[0]+'" y2="'+b[1]+'" stroke="'+color+'" '+extra+'/>';
-  const text=(x,y,t,anchor='middle')=>'<text x="'+x+'" y="'+y+'" text-anchor="'+anchor+'">'+t+'</text>';
-  function plane(info){
-    const mint='var(--viz-series-1)',amber='var(--viz-series-2)',muted='var(--muted-foreground)';
-    let s='<title>J'+(info.j+1)+'：当前下游总质心与带符号力臂</title>';
-    if(info.degenerate)return s+'<circle cx="150" cy="57" r="27" fill="none" stroke="var(--border)"/><circle cx="150" cy="57" r="4" fill="'+mint+'"/>'+text(150,111,'重力沿着关节轴')+text(150,135,'平面内重力 ≈ 0，补偿 ≈ 0');
-    const scale=Math.min(150/Math.max(.12,Math.abs(info.x)),60/Math.max(.12,Math.abs(info.y)));
-    const p=[150-info.x*scale/2,62+info.y*scale/2],c=[150+info.x*scale/2,62-info.y*scale/2],y=123;
-    s+=line(p,c,muted,'stroke-dasharray="3 4"')+line([c[0],22],[c[0],y],'var(--border)');
-    s+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="'+mint+'"/><path d="M'+c[0]+','+(c[1]-5)+' l5,5 -5,5 -5,-5 Z" fill="'+amber+'"/>';
-    s+=line([c[0],c[1]+7],[c[0],c[1]+30],amber,'stroke-width="2"')+'<path d="M'+(c[0]-4)+','+(c[1]+26)+' l4,7 4,-7 Z" fill="'+amber+'"/>';
-    s+=line([p[0],y-4],[p[0],y+4],muted)+line([c[0],y-4],[c[0],y+4],muted)+line([p[0],y],[c[0],y],muted);
-    if(Math.abs(info.torque)>.0005){
-      const sign=Math.sign(info.torque),points=Array.from({length:21},(_,k)=>{const t=.2+sign*k/20*4;return [p[0]+19*Math.cos(t),p[1]-19*Math.sin(t)];});
-      const end=points[20],before=points[19],angle=Math.atan2(end[1]-before[1],end[0]-before[0]);
-      s+='<polyline points="'+points.map(p=>p.join(',')).join(' ')+'" fill="none" stroke="'+mint+'" stroke-width="1.7"/><path d="M'+end.join(',')+' L'+[end[0]-6*Math.cos(angle-.5),end[1]-6*Math.sin(angle-.5)].join(',')+' L'+[end[0]-6*Math.cos(angle+.5),end[1]-6*Math.sin(angle+.5)].join(',')+' Z" fill="'+mint+'"/>';
-    }
-    return s+text(150,145,'d = '+signed(info.x,4)+' m');
-  }
-  function bars(before,now,bound){
-    const x=v=>150+v/bound*136;
-    return '<title>参考 '+fmt(before,6)+'，当前 '+fmt(now,6)+' N·m；六关节共用刻度</title>'
-      +line([14,21],[286,21],'var(--border)')+line([150,8],[150,35],'var(--muted-foreground)')
-      +'<rect x="'+Math.min(150,x(before))+'" y="11" width="'+Math.abs(x(before)-150)+'" height="7" fill="none" stroke="var(--muted-foreground)"/>'
-      +'<rect x="'+Math.min(150,x(now))+'" y="24" width="'+Math.abs(x(now)-150)+'" height="7" fill="var(--viz-series-1)"/>'
-      +'<circle cx="'+x(now)+'" cy="27.5" r="2" fill="var(--viz-series-1)"/>';
-  }
   function render(root,c,state,active){
     const $=id=>root.querySelector('#'+id),k=state.driver,deg=180/Math.PI,ref=state.referenceQ[k]*deg,angle=state.q[k]*deg,dq=angle-ref;
     $('yg-driver').value=k;
@@ -448,20 +428,18 @@ const GravityCouplingView=(()=>{
     const names=c.rows.filter(r=>r.moved).map(r=>r.name);
     const upstream=Array.from({length:k},(_,i)=>'J'+(i+1));
     $('yg-scope').textContent='J'+(k+1)+' 带着 '+names.join('、')+' 转动，共 '+fmt(c.movedMass,3)+' kg。'+(k?'这些连杆的重量同时由 '+upstream.join('、')+' 及 J'+(k+1)+' 承担。':'它位于基座处，没有更上游的活动关节。');
-    const bound=Math.max(.02,...c.current.tau.map(Math.abs),...c.reference.tau.map(Math.abs))*1.1;
-    $('yg-response-grid').innerHTML=c.infos.map((info,i)=>{
+    const bound=Math.max(.0001,...c.delta.map(Math.abs));
+    $('yg-response-grid').innerHTML=c.delta.map((_,i)=>{
       const before=c.reference.tau[i],now=c.current.tau[i],delta=c.delta[i],changed=Math.abs(delta)>=.00005;
-      const calc=info.degenerate?'重力近乎平行于轴 · 此轴补偿 ≈ 0':fmt(info.force,3)+' N × ('+signed(info.x,4)+' m)';
-      return '<article class="yg-response-card '+(i<k?'upstream':i===k?'driver':'downstream')+'" data-response="'+i+'">'
-        +'<div class="yg-card-head"><b>J'+(i+1)+'</b><span>'+relation(i,k)+'</span></div>'
-        +'<div class="yg-card-values"><span class="yg-reference-value">'+signed(before,4)+'<small>参考</small></span><span class="yg-transition">→</span><strong>'+signed(now,4)+'<small>当前 / N·m</small></strong></div>'
-        +'<div class="yg-delta '+(changed?'changed':'')+'">Δg'+(i+1)+' <output id="yg-delta-'+i+'">'+signed(delta,4)+'</output><span> N·m</span></div>'
-        +'<svg class="yg-compare-bars" viewBox="0 0 300 42" role="img" aria-label="J'+(i+1)+' 参考与当前力矩比较">'+bars(before,now,bound)+'</svg>'
-        +'<svg class="yg-mini-plane" viewBox="0 0 300 153" role="img" aria-label="J'+(i+1)+' 当前力臂示意">'+plane(info)+'</svg>'
-        +'<div class="yg-card-calc">'+calc+'</div><div class="yg-card-bottom"><span>下游总质量 '+fmt(info.mass,3)+' kg</span><button type="button" data-detail-joint="'+i+'">展开 J'+(i+1)+' ↗</button></div></article>';
+      const width=Math.min(50,Math.abs(delta)/bound*50);
+      return '<article class="yg-response-row '+(i<k?'upstream':i===k?'driver':'downstream')+'" data-response="'+i+'">'
+        +'<div class="yg-response-identity"><b>J'+(i+1)+'</b><small>'+relation(i,k)+'</small></div>'
+        +'<div class="yg-value-pair"><span>'+signed(before,4)+'</span><i aria-hidden="true">→</i><strong>'+signed(now,4)+'</strong></div>'
+        +'<div class="yg-change '+(changed?'changed':'')+'"><output id="yg-delta-'+i+'">'+signed(delta,4)+'</output><span class="yg-delta-track" aria-hidden="true"><i class="yg-zero"></i><i class="yg-delta-fill '+(delta<0?'negative':'positive')+'" style="width:'+width+'%"></i></span></div>'
+        +'<button type="button" data-detail-joint="'+i+'" aria-label="查看 J'+(i+1)+' 的力臂计算">看力臂 ↗</button></article>';
     }).join('');
     const changedUpstream=upstream.filter((_,i)=>Math.abs(c.delta[i])>=.00005);
-    let summary=Math.abs(dq)<.00005?'当前与参考姿态相同。试着转动选中的关节，看上游卡片的 Δg 如何一起变化。'
+    let summary=Math.abs(dq)<.00005?'当前与参考姿态相同。试着转动选中的关节，看上游各行的 Δg 如何一起变化。'
       :'只改变 J'+(k+1)+' '+signed(dq,1)+'°：'+(changedUpstream.length?changedUpstream.join('、')+' 的补偿已变化，即使这些关节自己的角度没有变化。':k?'本次姿态变化下，上游补偿变化小于显示精度。':'没有上游活动关节；下方保留整条链的结果。');
     if(k>0)summary+=' J1 的轴近乎竖直，重力绕这根轴的力矩仍近似为零。';
     $('yg-response-summary').textContent=summary;

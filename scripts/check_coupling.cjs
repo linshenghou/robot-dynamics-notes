@@ -18,6 +18,8 @@ const root=path.resolve(__dirname,'..'),artifacts=path.join(root,'artifacts');
   assert(Math.abs(s.q[3]-before.q[3]-Math.PI/6)<1e-9);
   assert(Math.abs(s.delta[0])<1e-7);assert(Math.abs(s.delta[1])>.05);assert(Math.abs(s.delta[2])>.05);
   for(let i=0;i<6;i++)assert(Math.abs(Number(await page.locator('#yg-delta-'+i).textContent())-s.delta[i])<.000051);
+  assert((await page.locator('#yg-response-grid').boundingBox()).height<500,'Six joint responses fit in one compact comparison');
+  for(let i=0;i<6;i++)assert.equal(await page.locator('[data-response="'+i+'"] .yg-delta-fill').getAttribute('class'),s.delta[i]<0?'yg-delta-fill negative':'yg-delta-fill positive');
   fs.mkdirSync(artifacts,{recursive:true});
   await page.locator('#yg-coupling').screenshot({path:path.join(artifacts,'gravity-coupling-desktop.png')});
   await page.click('#yg-link-matrix>summary');
@@ -46,7 +48,7 @@ const root=path.resolve(__dirname,'..'),artifacts=path.join(root,'artifacts');
   await page.setViewportSize({width:1440,height:1060});await page.selectOption('#yg-driver','0');await page.click('#yg-nudge');s=await snapshot();
   assert(Math.max(...s.delta.map(Math.abs))<1e-4,'Nearly vertical base rotation changes gravity only at URDF-rounding scale');
   assert.deepEqual(errors,[]);
-  const report={passed:true,url,checks:['six simultaneous output joints','only the selected angle changes','reference/current/delta values','upstream response and vertical-axis zero','moving link contribution matrix','reference capture and restoration','optional detailed projection','mobile layout'],pageErrors:errors.length};
+  const report={passed:true,url,checks:['six compact output rows','only the selected angle changes','reference/current/delta values and bar direction','upstream response and vertical-axis zero','moving link contribution matrix','reference capture and restoration','optional detailed projection','mobile layout'],pageErrors:errors.length};
   fs.writeFileSync(path.join(artifacts,'coupling-browser.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
