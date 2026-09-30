@@ -68,6 +68,11 @@
 <details><summary>展开：从点质量到真实连杆，为什么书中用 RNEA？</summary><div class="inside">
 <p><strong>势能公式说明答案是什么：</strong>若世界 Z 向上，真实连杆的质心高度给出总势能；其梯度就是静止悬停所需的关节力矩。</p>
 <div class="formula">P(q) = ∑<sub>k</sub> m<sub>k</sub>g₀z<sub>c,k</sub>(q)<br>g<sub>j</sub>(q) = ∂P(q) / ∂q<sub>j</sub></div>
+<div class="rnea-bridge" aria-labelledby="rnea-bridge-title"><div class="rnea-bridge-heading"><div><span class="method-kicker">把刚才的两连杆，按递推顺序再算一遍</span><h3 id="rnea-bridge-title">二维例子就是静止 RNEA 的骨架</h3></div><span class="small">数值随上方滑块变化</span></div>
+<div class="rnea-steps"><div class="rnea-step"><small>01 · 前向：定位力臂</small><p>先用 q₁、q₁+q₂ 算 J2 与 m₂ 在水平方向的位置。</p><div class="rnea-equation">x<sub>J2</sub> = ℓ₁ cos q₁<br>x<sub>m2</sub> = x<sub>J2</sub> + ℓ₂ cos(q₁+q₂)</div><output id="rnea-forward"></output></div>
+<div class="rnea-step"><small>02 · 后向：先看末端 J2</small><p>末端重物 m₂ 的重量，对 J2 产生补偿需求。</p><div class="rnea-equation">g₂ = m₂g₀(x<sub>m2</sub> − x<sub>J2</sub>)</div><output id="rnea-j2"></output></div>
+<div class="rnea-step"><small>03 · 后向：传回 J1</small><p>搬到 J1 后，m₂ 又多出一段 ℓ₁ 的力臂；再加 m₁。</p><div class="rnea-equation">g₁ = g₂ + (m₁+m₂)g₀x<sub>J2</sub></div><output id="rnea-j1"></output></div></div>
+<p class="rnea-bridge-caption">这里显示的是<strong>电机补偿力矩</strong>，符号与真实重力矩相反。第二步已得到网页右侧 Newton–Euler 推导的 g₂；第三步得到同一个 g₁。所谓“后向”，就是先算末端，再把它的重量和转动作用带给上游关节。</p></div>
 <p><strong>RNEA 是书中的通用计算过程：</strong>前向求每根连杆的位姿、速度和加速度；后向把各连杆所需的力与力矩汇总到关节，再投影到关节轴。求重力项时设 q̇ = q̈ = 0、末端外部 wrench = 0，并通过虚拟基座加速度 −g<sub>world</sub> 注入重力。</p>
 <div class="mini-flow"><span>URDF 质量、质心与当前 q</span><i>→</i><span>前向：连杆状态</span><i>→</i><span>后向：汇总 wrench</span><i>→</i><span>投影：g(q)</span></div>
 <div class="formula">g(q) = ID(q, 0, 0, g<sub>world</sub>, 0)<small>ID 表示 Modern Robotics 的 InverseDynamics；这里省略固定的模型参数。世界重力向下，例：g<sub>world</sub> = (0, 0, −9.81) m/s²。</small></div>

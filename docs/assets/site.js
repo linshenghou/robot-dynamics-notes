@@ -50,6 +50,9 @@
     $('planar-values').innerHTML=`势能 P = <b>${fmt(d.potential)} J</b><br>g₁ = <b>${fmt(d.gravity[0])} N·m</b><br>g₂ = <b>${fmt(d.gravity[1])} N·m</b><br><span class="small">g₁ 中 m₁ / m₂ 的贡献：<br>${fmt(d.contributions[0][0])} / ${fmt(d.contributions[0][1])} N·m</span>`;
     $('planar-energy-output').textContent=`g₁ ${fmt(d.gravity[0])} · g₂ ${fmt(d.gravity[1])} N·m`;
     $('planar-ne-output').textContent=`g₁ ${fmt(ne.gravity[0])} · g₂ ${fmt(ne.gravity[1])} N·m`;
+    $('rnea-forward').textContent=`xJ2 ${fmt(d.points[1][0])} m · xm₂ ${fmt(d.points[2][0])} m`;
+    $('rnea-j2').textContent=`m₂g₀ ${fmt(m*P.G)} N · g₂ ${fmt(ne.gravity[1])} N·m`;
+    $('rnea-j1').textContent=`上游新增 ${fmt((1+m)*P.G*d.points[1][0])} N·m · g₁ ${fmt(ne.gravity[0])} N·m`;
   }
   ['p-q1','p-q2','p-m2'].forEach(id=>$(id).addEventListener('input',planarUpdate));$('planar-vertical').addEventListener('click',()=>{$('p-q1').value=0;$('p-q2').value=90;planarUpdate();});planarUpdate();
   const params={mode:'hold',mass:2,length:.35,kp:10,kd:.7,target:rad(25),external:0,gravityRatio:1,friction:0};
