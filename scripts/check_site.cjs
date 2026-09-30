@@ -55,6 +55,18 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   assert.equal(await page.locator('#planar-energy-output').textContent(),await page.locator('#planar-ne-output').textContent());
   await page.locator('#planar .quiz-options button').first().click();assert((await page.locator('#planar .quiz-feedback').textContent()).startsWith('对。'));
   await page.goto(base+'#wrench');const wf=page.frameLocator('iframe[title="三维重力 wrench 与参考点实验"]');await wf.locator('#tau').waitFor();await wf.locator('[data-axis="2"]').click();assert.equal(await wf.locator('#tau').textContent(),'0.00 N·m');
+  assert.equal(await wf.locator('.component-card').count(),6,'All six wrench components are visible');
+  await wf.locator('[data-preset="oblique"]').click();
+  const wrench=await wf.locator('html').evaluate(()=>wrenchSnapshot());
+  assert(wrench.f.every(v=>Math.abs(v)>.1)&&wrench.n.every(v=>Math.abs(v)>.1),'Oblique force exposes all six nonzero components');
+  assert(Math.abs(wrench.n[0]-(wrench.r[1]*wrench.f[2]-wrench.r[2]*wrench.f[1]))<1e-10);
+  assert(Math.abs(wrench.n[1]-(wrench.r[2]*wrench.f[0]-wrench.r[0]*wrench.f[2]))<1e-10);
+  assert(Math.abs(wrench.n[2]-(wrench.r[0]*wrench.f[1]-wrench.r[1]*wrench.f[0]))<1e-10);
+  await wf.locator('[data-component="nx"]').click();assert.equal(await wf.locator('[data-component="nx"]').getAttribute('aria-pressed'),'true');
+  assert.equal(await wf.locator('[data-axis="0"]').getAttribute('aria-pressed'),'true');
+  assert.equal((await wf.locator('#nx').textContent()).trim(),wrench.n[0].toFixed(2));
+  await page.locator('iframe[title="三维重力 wrench 与参考点实验"]').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'course-wrench.png')});
   await page.goto(base+'#mit');assert(await page.locator('#mit').isVisible());
   await page.goto(base+'#compliance');assert.equal((await page.evaluate(()=>lessonSnapshot())).params.mode,'hold');
   await page.locator('#sim-push').click();await page.waitForFunction(()=>lessonSnapshot().time>.4);assert((await page.evaluate(()=>lessonSnapshot())).state.q>Math.PI*25/180+.02);
@@ -67,7 +79,7 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.reload();assert.equal((await page.evaluate(()=>lessonSnapshot())).page,'sources');
   for(const width of [390,320]){
    await page.setViewportSize({width,height:850});
-   for(const id of ['start','gravity','planar','wrench','mit','compliance','sources']){await page.goto(base+'#'+id);await page.locator('#'+id).waitFor({state:'visible'});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px overflow: ${id}`);if(id==='planar'&&width===390)await page.locator('.method-grid').screenshot({path:path.join(artifacts,'planar-methods-mobile.png')});}
+   for(const id of ['start','gravity','planar','wrench','mit','compliance','sources']){await page.goto(base+'#'+id);await page.locator('#'+id).waitFor({state:'visible'});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px overflow: ${id}`);if(id==='planar'&&width===390)await page.locator('.method-grid').screenshot({path:path.join(artifacts,'planar-methods-mobile.png')});if(id==='wrench'&&width===390){const mobileWrench=page.frameLocator('iframe[title="三维重力 wrench 与参考点实验"]');await mobileWrench.locator('.component-card').last().waitFor();assert(await mobileWrench.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),'Mobile wrench has no horizontal overflow');await mobileWrench.locator('[data-preset="oblique"]').click();await mobileWrench.locator('.components').screenshot({path:path.join(artifacts,'wrench-six-components-mobile.png')});}}
    await page.goto(base+'#start');await bench.locator('#lab-canvas').waitFor({state:'visible'});
    await page.screenshot({path:path.join(artifacts,'course-mobile-first-'+width+'.png')});
    assert(await bench.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),`${width}px workbench overflow`);
@@ -84,7 +96,7 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.locator('[data-mode="motion"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.c.some(x=>Math.abs(x)>.001));
   await page.locator('[data-mode="static"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.acc.every(x=>Math.abs(x)<1e-10));assert(snap.result.c.every(x=>Math.abs(x)<1e-10));
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:7,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','fixed torque heat scale and six matching labels and bars','heat colours update with joint angles','interactive YAM joint angles','standalone inertia and velocity modes','navigation and deep links','gravity iframe slider','planar potential derivative and Newton-Euler agreement','planar special pose','quiz feedback','wrench projection','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
+  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:7,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','fixed torque heat scale and six matching labels and bars','heat colours update with joint angles','interactive YAM joint angles','standalone inertia and velocity modes','navigation and deep links','gravity iframe slider','planar potential derivative and Newton-Euler agreement','planar special pose','quiz feedback','wrench projection and six live components','oblique force cross product and component selection','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
   fs.writeFileSync(path.join(artifacts,base.startsWith('file:')?'browser-file.json':'browser-http.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
  }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
