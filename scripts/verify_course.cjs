@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 const assert=require('node:assert/strict');
 const P=require('../docs/assets/physics.js'),D=require('../src/gravity/dynamics.js'),G=require('../src/gravity/gravity_geometry.js'),model=require('../src/model/model.json');
-let maxPlanar=0,maxYam=0,seed=41;
+let maxPlanar=0,maxPlanarNe=0,maxYam=0,seed=41;
 function random(){seed=(1664525*seed+1013904223)>>>0;return seed/2**32;}
 for(let i=0;i<40;i++){
- const q1=(random()-.5)*5,q2=(random()-.5)*5,m2=.2+3*random(),a=P.planar(q1,q2,1,m2),e=1e-5;
+ const q1=(random()-.5)*5,q2=(random()-.5)*5,m2=.2+3*random(),a=P.planar(q1,q2,1,m2),ne=P.planarNewtonEuler(q1,q2,1,m2),e=1e-5;
  const grad=[(P.planar(q1+e,q2,1,m2).potential-P.planar(q1-e,q2,1,m2).potential)/(2*e),(P.planar(q1,q2+e,1,m2).potential-P.planar(q1,q2-e,1,m2).potential)/(2*e)];
- a.gravity.forEach((v,j)=>{maxPlanar=Math.max(maxPlanar,Math.abs(v-grad[j]));});
+ a.gravity.forEach((v,j)=>{maxPlanar=Math.max(maxPlanar,Math.abs(v-grad[j]));maxPlanarNe=Math.max(maxPlanarNe,Math.abs(v-ne.gravity[j]));});
  const q=model.joints.filter(j=>j.active).map(j=>j.lower+random()*(j.upper-j.lower)),z=Array(6).fill(0),out=D.inverse(model,q,z,z);
  for(let j=0;j<6;j++){
   const plus=q.slice(),minus=q.slice();plus[j]+=e;minus[j]-=e;
@@ -16,7 +16,7 @@ for(let i=0;i<40;i++){
   assert(Math.abs(D.dot(info.a,D.cross(D.sub(info.com,info.p),[0,0,-info.mass*9.81]))+out.tau[j])<1e-10);
  }
 }
-assert(maxPlanar<1e-7);assert(maxYam<1e-7);
+assert(maxPlanar<1e-7);assert(maxPlanarNe<1e-12);assert(maxYam<1e-7);
 // A single downstream coordinate change must be traceable to the moving links.
 // Independently check the torque differences against two potential-energy gradients.
 let maxCouplingGradient=0;
@@ -49,4 +49,4 @@ assert(Math.abs(damped.v-.8*decay)<1e-8);assert(Math.abs(damped.q-(.3+.8*I/base.
 const held=evolve(initial,{...base,mode:'hold',external:1},12);
 assert(Math.abs(held.q-(base.target+1/base.kp))<1e-7);
 const drifting=evolve(initial,{...base,mode:'drag',gravityRatio:.9},.4);assert(drifting.q<initial.q);
-console.log(JSON.stringify({passed:true,randomPoses:40,maxPlanarGradientError:maxPlanar,maxYamGradientError:maxYam,maxCouplingGradientError:maxCouplingGradient,freePendulumEnergyError:energyError,pdEquilibriumError:Math.abs(held.q-.4),checks:['single-joint change and upstream link contributions','potential gradients','YAM link sum and COM equivalence','energy conservation','gravity-compensated coasting','analytic damping decay','PD equilibrium','gravity estimation drift']},null,2));
+console.log(JSON.stringify({passed:true,randomPoses:40,maxPlanarGradientError:maxPlanar,maxPlanarNewtonEulerError:maxPlanarNe,maxYamGradientError:maxYam,maxCouplingGradientError:maxCouplingGradient,freePendulumEnergyError:energyError,pdEquilibriumError:Math.abs(held.q-.4),checks:['single-joint change and upstream link contributions','potential gradients and static Newton-Euler agreement','YAM link sum and COM equivalence','energy conservation','gravity-compensated coasting','analytic damping decay','PD equilibrium','gravity estimation drift']},null,2));

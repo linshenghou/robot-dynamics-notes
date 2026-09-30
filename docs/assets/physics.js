@@ -11,6 +11,14 @@
     return {points:[[0,0],[x1,z1],[x2,z2]],potential:G*(m1*z1+m2*z2),
       gravity:contributions.map(row=>row.reduce((a,b)=>a+b,0)),contributions};
   }
+  // Static Newton-Euler balance for two massless links with point masses at
+  // their tips. F1/F2 are downward load magnitudes; returned torques oppose
+  // the physical gravitational moments about the positive joint axes.
+  function planarNewtonEuler(q1,q2,m1=1,m2=1,l1=.35,l2=.3){
+    const F2=m2*G,F1=m1*G+F2;
+    const tau2=F2*l2*Math.cos(q1+q2);
+    return {loads:[F1,F2],gravity:[F1*l1*Math.cos(q1)+tau2,tau2]};
+  }
   function controller(s,p){
     const gravity=p.mass*G*p.length*Math.cos(s.q);
     const ff=p.mode==='off'?0:p.gravityRatio*gravity;
@@ -26,6 +34,6 @@
     return {q:s.q+dt*(a.q+2*b.q+2*c.q+d.q)/6,v:s.v+dt*(a.v+2*b.v+2*c.v+d.v)/6};
   }
   function energy(s,p){return .5*p.mass*p.length*p.length*s.v*s.v+p.mass*G*p.length*Math.sin(s.q);}
-  const api={G,planar,controller,derivative,step,energy};
+  const api={G,planar,planarNewtonEuler,controller,derivative,step,energy};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RobotLessonPhysics=api;
 })(globalThis);

@@ -18,3 +18,19 @@ main{max-width:1552px;margin:auto;padding:23px 40px 32px;outline:none}.page{max-
 
 .experiment-prompt>button{border:0;padding:0;background:none;font-family:inherit;cursor:pointer}.experiment-prompt>button:hover{color:var(--teal)}
 .legend-ramp{display:inline-block;width:20px;height:5px;flex:none;border-radius:4px;background:linear-gradient(90deg,#5b9fe8,#efb774,#e35158)}
+
+/* Chapter 02: put the potential-gradient and static Newton-Euler paths side by side. */
+.method-intro{margin:34px 0 18px}.method-intro h2{margin:0 0 8px;font-size:24px}.method-intro p{max-width:810px;color:var(--muted);font-size:13px}
+.method-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin:0 0 14px}
+.method-card{display:flex;flex-direction:column;min-width:0;overflow:hidden;border:1px solid var(--line);border-top:2px solid var(--teal);border-radius:7px;background:#151d20;padding:22px 24px 0}
+.method-card.ne-method{border-top-color:var(--orange)}
+.method-kicker{font:10px/1.5 var(--mono);letter-spacing:.7px;color:var(--teal)}.ne-method .method-kicker{color:var(--orange)}.method-kicker span{display:inline-block;min-width:26px;margin-right:5px}
+.method-card h3{font-size:20px;margin:9px 0 16px}
+.method-step{border-top:1px solid var(--line);padding:13px 0 15px}.method-step small{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}
+.method-math{font:18px/1.7 Georgia,'Songti SC',serif;color:var(--ink);overflow-wrap:anywhere}.method-math .math-continued{padding-left:26px}.method-math .math-accent{color:var(--teal)}.ne-method .method-math .math-accent{color:var(--orange)}
+.method-direction{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#1c2828;border:1px solid #354744;border-radius:4px;padding:8px 10px;margin:0 0 15px;font-size:11px}.method-direction span{white-space:nowrap}.method-direction b{font:10px var(--mono);color:var(--teal);white-space:nowrap}
+.method-note{font-size:11px;line-height:1.75;color:var(--muted);margin:6px 0 16px}.method-note a{color:var(--teal)}
+.method-live{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--line);margin-top:auto;padding:12px 0 15px;font-size:11px;color:var(--muted)}.method-live output{font:12px/1.6 var(--mono);color:var(--ink);text-align:right;white-space:nowrap}
+.method-conclusion{border-left:2px solid var(--teal);background:#1b2925;padding:11px 15px;margin-bottom:25px;font-size:12px;color:#c6d9d2}.method-conclusion strong{color:var(--teal)}
+@media(max-width:900px){.method-grid{grid-template-columns:1fr}.method-card{padding:19px 20px 0}.method-math{font-size:17px}}
+@media(max-width:420px){.method-intro h2{font-size:21px}.method-card{padding:16px 14px 0}.method-card h3{font-size:18px}.method-math{font-size:15px}.method-math .math-continued{padding-left:16px}.method-direction{font-size:9px;padding:8px 6px}.method-direction b{font-size:9px}.method-live{display:block}.method-live output{display:block;text-align:left;margin-top:4px}}

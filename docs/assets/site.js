@@ -42,7 +42,15 @@
     s+=text([25,h-18],hero?'重力 ↓    补偿力矩由关节轴与力臂决定':'q₂ 是相对角；第二杆的绝对角为 q₁ + q₂',colors.muted,12);
     svg.innerHTML=s;return data;
   }
-  function planarUpdate(){const q1=+$('p-q1').value,q2=+$('p-q2').value,m=+$('p-m2').value,d=planarDraw($('planar-scene'),rad(q1),rad(q2),m);$('p-q1-out').textContent=q1+'°';$('p-q2-out').textContent=q2+'°';$('p-m2-out').textContent=fmt(m,1)+' kg';$('planar-values').innerHTML=`势能 P = <b>${fmt(d.potential)} J</b><br>g₁ = <b>${fmt(d.gravity[0])} N·m</b><br>g₂ = <b>${fmt(d.gravity[1])} N·m</b><br><span class="small">g₁ 中 m₁ / m₂ 的贡献：<br>${fmt(d.contributions[0][0])} / ${fmt(d.contributions[0][1])} N·m</span>`;}
+  function planarUpdate(){
+    const q1=+$('p-q1').value,q2=+$('p-q2').value,m=+$('p-m2').value;
+    const d=planarDraw($('planar-scene'),rad(q1),rad(q2),m);
+    const ne=P.planarNewtonEuler(rad(q1),rad(q2),1,m);
+    $('p-q1-out').textContent=q1+'°';$('p-q2-out').textContent=q2+'°';$('p-m2-out').textContent=fmt(m,1)+' kg';
+    $('planar-values').innerHTML=`势能 P = <b>${fmt(d.potential)} J</b><br>g₁ = <b>${fmt(d.gravity[0])} N·m</b><br>g₂ = <b>${fmt(d.gravity[1])} N·m</b><br><span class="small">g₁ 中 m₁ / m₂ 的贡献：<br>${fmt(d.contributions[0][0])} / ${fmt(d.contributions[0][1])} N·m</span>`;
+    $('planar-energy-output').textContent=`g₁ ${fmt(d.gravity[0])} · g₂ ${fmt(d.gravity[1])} N·m`;
+    $('planar-ne-output').textContent=`g₁ ${fmt(ne.gravity[0])} · g₂ ${fmt(ne.gravity[1])} N·m`;
+  }
   ['p-q1','p-q2','p-m2'].forEach(id=>$(id).addEventListener('input',planarUpdate));$('planar-vertical').addEventListener('click',()=>{$('p-q1').value=0;$('p-q2').value=90;planarUpdate();});planarUpdate();
   const params={mode:'hold',mass:2,length:.35,kp:10,kd:.7,target:rad(25),external:0,gravityRatio:1,friction:0};
   let sim={q:rad(25),v:0},running=false,time=0,history=[{t:0,q:rad(25)}],lastFrame=null,frameCount=0;

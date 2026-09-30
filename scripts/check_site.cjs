@@ -46,7 +46,13 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.locator('iframe[title="YAM 六关节重力补偿实验"]').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'course-gravity-detail.png')});
   await page.screenshot({path:path.join(artifacts,'course-gravity.png'),fullPage:true});
-  await page.goto(base+'#planar');await page.locator('#planar-vertical').click();assert((await page.locator('#planar-values').textContent()).includes('g₂ = 0.00'));
+  await page.goto(base+'#planar');
+  await page.locator('.method-grid').screenshot({path:path.join(artifacts,'planar-methods.png')});
+  assert((await page.locator('.energy-method').textContent()).includes('∂P/∂q₁'));
+  assert((await page.locator('.ne-method').textContent()).includes('F₁ = m₁g₀ + F₂'));
+  assert.equal(await page.locator('#planar-energy-output').textContent(),await page.locator('#planar-ne-output').textContent());
+  await page.locator('#planar-vertical').click();assert((await page.locator('#planar-values').textContent()).includes('g₂ = 0.00'));
+  assert.equal(await page.locator('#planar-energy-output').textContent(),await page.locator('#planar-ne-output').textContent());
   await page.locator('#planar .quiz-options button').first().click();assert((await page.locator('#planar .quiz-feedback').textContent()).startsWith('对。'));
   await page.goto(base+'#wrench');const wf=page.frameLocator('iframe[title="三维重力 wrench 与参考点实验"]');await wf.locator('#tau').waitFor();await wf.locator('[data-axis="2"]').click();assert.equal(await wf.locator('#tau').textContent(),'0.00 N·m');
   await page.goto(base+'#mit');assert(await page.locator('#mit').isVisible());
@@ -61,7 +67,7 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.reload();assert.equal((await page.evaluate(()=>lessonSnapshot())).page,'sources');
   for(const width of [390,320]){
    await page.setViewportSize({width,height:850});
-   for(const id of ['start','gravity','planar','wrench','mit','compliance','sources']){await page.goto(base+'#'+id);await page.locator('#'+id).waitFor({state:'visible'});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px overflow: ${id}`);}
+   for(const id of ['start','gravity','planar','wrench','mit','compliance','sources']){await page.goto(base+'#'+id);await page.locator('#'+id).waitFor({state:'visible'});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px overflow: ${id}`);if(id==='planar'&&width===390)await page.locator('.method-grid').screenshot({path:path.join(artifacts,'planar-methods-mobile.png')});}
    await page.goto(base+'#start');await bench.locator('#lab-canvas').waitFor({state:'visible'});
    await page.screenshot({path:path.join(artifacts,'course-mobile-first-'+width+'.png')});
    assert(await bench.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),`${width}px workbench overflow`);
@@ -78,7 +84,7 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.locator('[data-mode="motion"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.c.some(x=>Math.abs(x)>.001));
   await page.locator('[data-mode="static"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.acc.every(x=>Math.abs(x)<1e-10));assert(snap.result.c.every(x=>Math.abs(x)<1e-10));
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:7,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','fixed torque heat scale and six matching labels and bars','heat colours update with joint angles','interactive YAM joint angles','standalone inertia and velocity modes','navigation and deep links','gravity iframe slider','planar special pose','quiz feedback','wrench projection','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
+  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:7,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','fixed torque heat scale and six matching labels and bars','heat colours update with joint angles','interactive YAM joint angles','standalone inertia and velocity modes','navigation and deep links','gravity iframe slider','planar potential derivative and Newton-Euler agreement','planar special pose','quiz feedback','wrench projection','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
   fs.writeFileSync(path.join(artifacts,base.startsWith('file:')?'browser-file.json':'browser-http.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
  }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
