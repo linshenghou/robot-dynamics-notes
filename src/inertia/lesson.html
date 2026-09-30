@@ -1,0 +1,37 @@
+<article class="page" id="inertia" data-title="第二课：惯性矩阵与关节力矩" hidden>
+  <div class="lesson-divider"><span>第二课 / 从静止悬停到关节加速</span><a href="#gravity">回看第一课：重力补偿</a></div>
+  <h1>重量没有变，<br>加速需要的力矩却变了。</h1>
+  <p class="lede">先选“仅 J1 加速”，再把 J1 的加速度调大、调小或反向。接着拖动姿态，观察矩阵和六台电机的力矩。</p>
+  <div class="experiment frame-wrap inertia-experiment">
+    <div class="experiment-header"><b>实验 02 · YAM 惯性矩阵</b><a href="labs/inertia.html" target="_blank" rel="noreferrer">独立打开 ↗</a></div>
+    <iframe data-src="labs/inertia.html?embed=1" title="YAM 惯性矩阵与六关节力矩实验" style="height:1120px"></iframe>
+    <div class="experiment-footer">比较给定姿态下的瞬时状态：q̇ = 0，无外力。默认把计算中的重力设为零，只观察惯性项；勾选“加回第一课的重力项”，再看两项之和。力矩弧箭头示转向，大小看数值。</div>
+  </div>
+  <div class="inertia-observations">
+    <div><span>01 / 固定姿态</span><h3>加速度加倍，惯性力矩加倍。</h3><p>在加速度输入中将 J1 从 1 改为 2。M 不变；六个惯性力矩都变为原来的两倍。</p></div>
+    <div><span>02 / 改变姿态</span><h3>质量固定，惯性系数改变。</h3><p>保持加速度不变，拖动 J2、J3。注意固定的 4.111 kg 与变化的 M，两者描述的是不同的物理量。</p></div>
+    <div><span>03 / 查看耦合</span><h3>加速度为零，也可能需要出力。</h3><p>点“仅 J2 加速”，观察 J3 电机。它要让 q̈₃ 保持零，仍可能需要非零力矩。</p></div>
+  </div>
+  <div class="reading"><h2>先把第一课和第二课接起来。</h2><p>第一课是在问：机械臂静止时，电机怎样托住重量？第二课是在问：除了托住重量，要实现指定的关节加速度，还需要多少力矩？先在 q̇ = 0 的瞬间把速度相关项置零：</p></div>
+  <div class="formula big">τ = <span class="inertia">M(q) q̈</span> + <span class="gravity">g(q)</span><small>无外力 · q̇ = 0；这不是省略速度项后的通用运动控制律</small></div>
+  <div class="reading"><p>q̈ = 0 时，惯性项为零，回到 τ = g(q)。q̈ ≠ 0 时，惯性项描述为产生加速度所需的额外力矩。正常的运动轨迹通常还有 q̇ ≠ 0，此时应回到包含 c(q,q̇) 的完整模型。</p></div>
+  <h2>一台电机对应一行，一个加速度对应一列。</h2>
+  <div class="inertia-meaning">
+    <div><span class="method-kicker">看输出 / 第 i 行</span><h3>J1 电机总共需要多少惯性力矩？</h3><div class="method-math">τ<sub>惯性,1</sub> = M<sub>11</sub>q̈₁ + M<sub>12</sub>q̈₂ + ⋯ + M<sub>16</sub>q̈₆</div><p>第一行的六个系数，分别描述六个关节加速对 J1 电机的影响。每项乘完，再相加。</p></div>
+    <div><span class="method-kicker">看输入 / 第 j 列</span><h3>只让 J2 加速，会影响哪些电机？</h3><div class="method-math">τ<sub>惯性,i</sub> = M<sub>i2</sub>q̈₂</div><p>其余五个关节加速度设为零。若 q̈₂ = 1 rad/s²，第二列的数值就是六个所需惯性力矩的数值。</p></div>
+  </div>
+  <div class="reading"><p><strong>惯性耦合描述的是力矩需求。</strong>我们在实验中指定的是完整的六维加速度，包括哪些关节要保持零。其他电机可能需要出力才能满足这个要求；这不等于其他关节一定也产生非零的相对角加速度。</p><p>固定姿态时，矩阵不随加速度改变。多个关节同时加速时，将对应列分别乘以各自的加速度，再逐项相加。一个负的非对角元素，表示正加速度对那台电机贡献负力矩；它不表示连杆具有“负质量”。</p></div>
+  <div class="quiz" data-answer="1" data-explanation="q̈₁ = 0 只让第一行的 M₁₁q̈₁ 为零。其他关节的加速度仍可通过 M₁₂、M₁₃ 等系数贡献 J1 的力矩。"><div class="quiz-title">检验你对一行的理解</div><p>指定 q̈₁ = 0，只让 J3 加速，J1 电机的惯性力矩是否一定为零？</p><div class="quiz-options"><button>一定为零，因为 J1 不加速</button><button>不一定，要看 M₁₃q̈₃</button></div><p class="quiz-feedback" aria-live="polite"></p></div>
+  <h2>为什么质量不变，M 却会随姿态改变？</h2>
+  <div class="reading"><p>先用最容易计算的二维模型：两根无质量杆，肘部放 m₁ = 1 kg，末端放 m₂ = 1.5 kg，杆长分别为 0.4 m、0.3 m。只让 J1 加速，J2 的相对角度保持固定，整组质量一起绕 J1 转。</p><p>此时 J1 的惯性系数就是各点质量的 m r² 之和。末端折回来，离 J1 更近，同样的角加速度需要更小的力矩。</p></div>
+  <div class="inertia-geometry"><figure><img src="assets/inertia-2r-extended.svg" alt="两杆展开时末端距离 J1 为 0.7 米，M11 为 0.895 kg·m²" width="420" height="270"><figcaption>展开：相同的质量，离转轴更远。</figcaption></figure><figure><img src="assets/inertia-2r-folded.svg" alt="第二杆折成九十度时末端距离 J1 为 0.5 米，M11 为 0.535 kg·m²" width="420" height="270"><figcaption>弯折：质量不变，绕 J1 的惯性减小。</figcaption></figure></div>
+  <div class="formula">M<sub>11</sub> = m₁ℓ₁² + m₂r₂²<br>r₂² = ℓ₁² + ℓ₂² + 2ℓ₁ℓ₂ cos q₂<small>在这个点质量模型中，q̈₂ = 0 时 τ₁ = M₁₁q̈₁</small></div>
+  <div class="reading"><p>展开时 r₂ = 0.7 m，M₁₁ = 0.895 kg·m²；折到 90° 时 r₂ = 0.5 m，M₁₁ = 0.535 kg·m²。总质量始终是 2.5 kg，但它们到转轴的距离不同。</p><details><summary>展开：这个二维模型完整的 2 × 2 惯性矩阵</summary><div class="inside"><div class="formula">M<sub>11</sub> = (m₁ + m₂)ℓ₁² + m₂ℓ₂² + 2m₂ℓ₁ℓ₂ cos q₂<br>M<sub>12</sub> = M<sub>21</sub> = m₂ℓ₂² + m₂ℓ₁ℓ₂ cos q₂<br>M<sub>22</sub> = m₂ℓ₂²</div><p>第二个关节改变的是第二杆相对第一杆的转动，因此 M₂₂ 只包含末端质量绕 J2 的惯性。M₁₂ 和 M₂₁ 描述两种关节运动的耦合。这里两个关节都是旋转关节，矩阵元素的单位均为 kg·m²。</p></div></details></div>
+  <h2>回到 YAM：每根真实连杆还有自己的转动惯量。</h2>
+  <div class="reading"><p>真实连杆不是一个点。既要让质心加速，也要让连杆绕质心转动。URDF 的质量和 3 × 3 连杆惯量，与整个机器人在关节空间中的 6 × 6 矩阵 M 是不同层次的量。</p><div class="mini-flow"><span>URDF：质量、质心、连杆惯量</span><i>→</i><span>姿态 q：质心位置与关节轴</span><i>→</i><span>各连杆平移、转动贡献</span><i>→</i><span>整臂的 M(q)</span></div><p>回到实验，展开“这个惯性系数来自哪些连杆”。每根连杆贡献的平移部分和转动部分相加，再将所有连杆相加，就是当前选中的矩阵元素。</p><details><summary>展开：数学形式、RNEA 与本项目的实现</summary><div class="inside"><p>用每根连杆质心的线速度雅可比 J<sub>v,k</sub>、角速度雅可比 J<sub>ω,k</sub>，以及表达在同一世界坐标系中的质心惯量 I<sub>k</sub><sup>world</sup>：</p><div class="formula">M(q) = ∑<sub>k</sub> [m<sub>k</sub>J<sub>v,k</sub><sup>T</sup>J<sub>v,k</sub> + J<sub>ω,k</sub><sup>T</sup>I<sub>k</sub><sup>world</sup>J<sub>ω,k</sub>]</div><p>这也说明了惯性矩阵为什么对称，并且有效的独立关节模型下，任意非零关节速度的动能 T = ½q̇<sup>T</sup>Mq̇ 为正。每根连杆的本体参数保持固定，但雅可比和表达在世界系中的惯量随姿态改变。</p><p>Modern Robotics 的逆动力学接口还提供另一条计算路径。依次只给关节 j 单位加速度，并把速度、计算重力与末端外部 wrench 设为零：</p><div class="formula">M<sub>:j</sub>(q) = ID(q, 0, e<sub>j</sub>, 0, 0)<br>M(q)q̈ = ID(q, 0, q̈, 0, 0)<small>eⱼ 的第 j 个分量为 1，其余为零；省略固定模型参数</small></div><p>书中的 ID 使用递归牛顿—欧拉算法（RNEA）。直接计算所需力矩时，可以不先显式构造全部 M。本实验用质心雅可比构造 M，并以项目中独立的世界坐标牛顿—欧拉力／力矩投影计算核对；后者不是书中那段递归实现。</p><p><a href="https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-1-3-understanding-the-mass-matrix/" target="_blank" rel="noreferrer">Modern Robotics §8.1.3：Understanding the Mass Matrix ↗</a> · <a href="https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-3-newton-euler-inverse-dynamics/" target="_blank" rel="noreferrer">§8.3：Newton–Euler Inverse Dynamics ↗</a></p></div></details></div>
+  <h2>加回重力，看看两种力矩怎样相加。</h2>
+  <div class="reading"><p>在实验中保持姿态和加速度不变，勾选“加回第一课的重力项”。M 与惯性力矩保持原值，每台电机再加上自己的 g(q)。两项可能同号相加，也可能反号抵消。</p><p>再点击“加速度归零”：惯性项消失，六台电机只留下重力补偿。这时你看到的，就是第一课的静止悬停。</p></div>
+  <div class="quiz" data-answer="0" data-explanation="固定 q 后，M 和 g 都不变。加速度加倍只让 Mq̈ 加倍，因此总力矩变为 2Mq̈ + g，通常不是原来总力矩的两倍。"><div class="quiz-title">区分“惯性力矩”和“电机总力矩”</div><p>加回重力后，固定姿态，将所有关节加速度加倍，会怎样？</p><div class="quiz-options"><button>惯性项加倍，重力项保持不变</button><button>惯性项和重力项都加倍</button></div><p class="quiz-feedback" aria-live="polite"></p></div>
+  <div class="reading"><h2>这对基础力矩控制意味着什么？</h2><p>重力前馈负责托住重量。启动、停止、改变运动速度时，还要产生惯性力矩；即使运动速度很小，突然启动也可能有明显的加速度。只补偿重力的控制器仍可通过反馈产生动态力矩，但惯性不会因此消失。</p><p>我们现在能分别阅读 g(q) 和 M(q)q̈，也能在 q̇ = 0 的瞬间把它们相加。速度相关项、完整轨迹跟踪和任务空间惯性，会在后续课程中展开。</p></div>
+  <div class="next"><span>第一课托住重量，第二课理解加速。接着把模型连接到电机接口。</span><a href="#mit">03 · MIT 模式与前馈力矩 →</a></div>
+</article>

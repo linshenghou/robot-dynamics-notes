@@ -26,9 +26,23 @@ workbench=(src/'workbench/lab.template.html').read_text()
 for key,file in [('__LAB_CSS__','workbench/lab.css'),('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__LAB_MATH__','workbench/lab_math.js'),('__TORQUE_HEAT__','workbench/torque_heat.js'),('__LAB_SCENE__','workbench/lab_scene.js'),('__LAB_APP__','workbench/lab.js')]:
     workbench=workbench.replace(key,(src/file).read_text())
 workbench=workbench.replace('<head>','<!-- I2RT model and reduced geometry: '+license_text+' -->\n<head>',1).replace('</body>',HEIGHT+'</body>')
-outputs={ROOT/'docs/labs/gravity.html':gravity,ROOT/'docs/labs/wrench.html':wrench,ROOT/'docs/labs/workbench.html':workbench}
-for name in ['gravity-1r.svg','gravity-2r.svg']:
+inertia=(src/'inertia/inertia.template.html').read_text()
+for key,file in [('__LAB_CSS__','workbench/lab.css'),('__INERTIA_CSS__','inertia/inertia.css'),('__DYNAMICS_ENGINE__','gravity/dynamics.js'),('__MODEL_JSON__','model/model.json'),('__LAB_MATH__','workbench/lab_math.js'),('__LAB_SCENE__','workbench/lab_scene.js'),('__INERTIA_APP__','inertia/inertia.js')]:
+    inertia=inertia.replace(key,(src/file).read_text())
+inertia=inertia.replace('<head>','<!-- I2RT model and reduced geometry: '+license_text+' -->\n<head>',1).replace('</body>',HEIGHT+'</body>')
+outputs={ROOT/'docs/labs/gravity.html':gravity,ROOT/'docs/labs/wrench.html':wrench,ROOT/'docs/labs/workbench.html':workbench,ROOT/'docs/labs/inertia.html':inertia}
+course_path=ROOT/'docs/index.html'
+course=course_path.read_text()
+start='<!-- INERTIA_LESSON_START -->'
+end='<!-- INERTIA_LESSON_END -->'
+before,remainder=course.split(start,1)
+_,after=remainder.split(end,1)
+outputs[course_path]=before+start+'\n'+(src/'inertia/lesson.html').read_text().strip()+'\n'+end+after
+for name in ['gravity-1r.svg','gravity-2r.svg','inertia-2r.svg']:
     outputs[ROOT/'docs/assets'/name]=(src/'figures'/name).read_text()
+inertia_figure=(src/'figures/inertia-2r.svg').read_text()
+for name,box in [('extended','0 80 420 270'),('folded','420 80 420 270')]:
+    outputs[ROOT/'docs/assets'/f'inertia-2r-{name}.svg']=inertia_figure.replace('viewBox="0 0 840 350"',f'viewBox="{box}"')
 for name,source in [('yam.urdf',src/'model/yam.urdf'),('I2RT-LICENSE',src/'model/LICENSE'),('LICENSE',ROOT/'LICENSE'),('CONTENT-LICENSE.md',ROOT/'CONTENT-LICENSE.md'),('README.md',ROOT/'README.md')]:
     outputs[ROOT/'docs/downloads'/name]=source.read_text()
 stale=[]

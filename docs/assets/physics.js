@@ -19,6 +19,11 @@
     const tau2=F2*l2*Math.cos(q1+q2);
     return {loads:[F1,F2],gravity:[F1*l1*Math.cos(q1)+tau2,tau2]};
   }
+  // Two massless planar links: m1 at the elbow, m2 at the distal tip.
+  function planarMass(q2,m1=1,m2=1.5,l1=.4,l2=.3){
+    const coupling=m2*l1*l2*Math.cos(q2),distal=m2*l2*l2;
+    return [[(m1+m2)*l1*l1+distal+2*coupling,distal+coupling],[distal+coupling,distal]];
+  }
   function controller(s,p){
     const gravity=p.mass*G*p.length*Math.cos(s.q);
     const ff=p.mode==='off'?0:p.gravityRatio*gravity;
@@ -34,6 +39,6 @@
     return {q:s.q+dt*(a.q+2*b.q+2*c.q+d.q)/6,v:s.v+dt*(a.v+2*b.v+2*c.v+d.v)/6};
   }
   function energy(s,p){return .5*p.mass*p.length*p.length*s.v*s.v+p.mass*G*p.length*Math.sin(s.q);}
-  const api={G,planar,planarNewtonEuler,controller,derivative,step,energy};
+  const api={G,planar,planarNewtonEuler,planarMass,controller,derivative,step,energy};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RobotLessonPhysics=api;
 })(globalThis);

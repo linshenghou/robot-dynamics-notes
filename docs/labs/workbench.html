@@ -320,7 +320,9 @@ const YamLabScene = (()=>{
       const jointColor=j=>state.heat?YamTorqueHeat.css(result.tau[j]):colors[j===state.j?'inertia':'ink'].css;
       const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;const dpr=Math.min(devicePixelRatio||1,2);canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
       const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw),cp=Math.cos(state.pitch),sp=Math.sin(state.pitch);
-      const view=p=>[cy*p[0]-sy*p[1],-sp*(sy*p[0]+cy*p[1])+cp*p[2],cp*(sy*p[0]+cy*p[1])+sp*p[2]];
+      // A right-handed camera keeps projected torque turns consistent with
+      // the positive URDF axis and the right-hand rule (right × up = depth).
+      const view=p=>[cy*p[0]-sy*p[1],sp*(sy*p[0]+cy*p[1])+cp*p[2],-cp*(sy*p[0]+cy*p[1])+sp*p[2]];
       const worldMeshes=meshes.map(m=>{const f=result.fk.frames[m.name],world=m.vertices.map(v=>D.add(f.p,D.mv(f.R,v)));return {...m,world,points:world.map(view)};});
       const bounds=worldMeshes.flatMap(m=>m.points),minX=Math.min(...bounds.map(p=>p[0])),maxX=Math.max(...bounds.map(p=>p[0])),minY=Math.min(...bounds.map(p=>p[1])),maxY=Math.max(...bounds.map(p=>p[1]));
       const scale=Math.min((w-(w<360?90:170))/Math.max(.34,maxX-minX),(h-82)/Math.max(.42,maxY-minY)),mx=(maxX+minX)/2,my=(maxY+minY)/2;
@@ -330,7 +332,8 @@ const YamLabScene = (()=>{
       for(let k=-3;k<=4;k++){line(proj([k*.1,-.3,0]),proj([k*.1,.4,0]),colors.line.css);line(proj([-.3,k*.1,0]),proj([.4,k*.1,0]),colors.line.css);}
       const faces=[];
       for(const mesh of worldMeshes){
-        const focus=mesh.name===(state.panel==='gravity'?state.link:active[state.j].child),frame=result.fk.frames[mesh.name],downstream=frame.ancestors.includes(state.j);
+        const driver=state.axis?state.col:state.j;
+        const focus=mesh.name===(state.panel==='gravity'?state.link:active[driver].child),frame=result.fk.frames[mesh.name],downstream=frame.ancestors.includes(driver);
         // A link takes the heat colour of the active joint that drives it.
         const heatJoint=frame.ancestors.at(-1),color=state.heat&&heatJoint!==undefined?YamTorqueHeat.rgb(result.tau[heatJoint]):colors[focus?'inertia':downstream?'inertia':'ink'].rgb;
         const tint=state.heat && heatJoint!==undefined ? .76 : focus ? .72 : downstream ? .50 : .43,base=color.map((v,i)=>v*tint+colors.surface.rgb[i]*(1-tint));
@@ -340,16 +343,25 @@ const YamLabScene = (()=>{
       if(state.com)for(const frame of Object.values(result.fk.frames)){
         if(!frame.ancestors.length)continue;const c=proj(frame.com),end=proj(D.add(frame.com,[0,0,-.04-.035*Math.sqrt(frame.link.mass)]));ctx.fillStyle=colors.gravity.css;ctx.beginPath();ctx.arc(...c,frame.link.name===state.link?4:2.5,0,2*Math.PI);ctx.fill();line(c,end,colors.gravity.css,1.1);if(Math.hypot(end[0]-c[0],end[1]-c[1])>3)head(c,end,colors.gravity.css);
       }
+      if(state.acceleration)for(const frame of Object.values(result.fk.frames)){
+        if(!frame.ancestors.length||frame.link.name.startsWith('tip_')||D.dot(frame.ac,frame.ac)<1e-12)continue;
+        const p=proj(frame.com),end=proj(D.add(frame.com,D.scale(frame.ac,.11)));
+        ctx.fillStyle=colors.inertia.css;ctx.beginPath();ctx.arc(...p,2.5,0,2*Math.PI);ctx.fill();line(p,end,colors.inertia.css,1.5);
+        if(Math.hypot(end[0]-p[0],end[1]-p[1])>3)head(p,end,colors.inertia.css);
+      }
+      let axisEnd;
+      if(state.axis){const f=result.fk.jointFrames[state.j],start=proj(D.add(f.p,D.scale(f.axis,-.035)));axisEnd=proj(D.add(f.p,D.scale(f.axis,.19)));line(start,axisEnd,colors.muted.css,1.5);head(start,axisEnd,colors.muted.css);}
       const max=Math.max(.01,...result.tau.map(Math.abs));
       result.fk.jointFrames.forEach((f,j)=>{
         const p=proj(f.p),axis=f.axis,seed=Math.abs(axis[2])<.9?[0,0,1]:[0,1,0];let u=D.cross(seed,axis);u=D.scale(u,1/Math.sqrt(D.dot(u,u)));const v=D.cross(axis,u);
         const color=jointColor(j);
         ctx.beginPath();ctx.arc(...p,j===state.j?4.5:3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
-        if(Math.abs(result.tau[j])>.0005){const pts=[],dir=Math.sign(result.tau[j]);for(let k=0;k<=24;k++){const t=.4+dir*k/24*4.7;pts.push(proj(D.add(f.p,D.add(D.scale(u,.048*Math.cos(t)),D.scale(v,.048*Math.sin(t))))));}ctx.beginPath();ctx.moveTo(...pts[0]);pts.slice(1).forEach(p=>ctx.lineTo(...p));ctx.lineWidth=1+1.6*Math.sqrt(Math.abs(result.tau[j])/max);ctx.strokeStyle=color;ctx.stroke();head(pts.at(-2),pts.at(-1),color);}
+        const radius=state.axis&&j===state.j?.10:.048;
+        if(Math.abs(result.tau[j])>(state.axis&&j===state.j?1e-12:.0005)){const pts=[],dir=Math.sign(result.tau[j]);for(let k=0;k<=24;k++){const t=.4+dir*k/24*4.7;pts.push(proj(D.add(f.p,D.add(D.scale(u,radius*Math.cos(t)),D.scale(v,radius*Math.sin(t))))));}ctx.beginPath();ctx.moveTo(...pts[0]);pts.slice(1).forEach(p=>ctx.lineTo(...p));ctx.lineWidth=1+1.6*Math.sqrt(Math.abs(result.tau[j])/max);ctx.strokeStyle=color;ctx.stroke();head(pts.at(-2),pts.at(-1),color);}
       });
       // Fixed left/right lanes avoid a cluster of six overlapping CAD callouts.
       const nodes=result.fk.jointFrames.map((f,j)=>({j,p:proj(f.p)}));
-      ctx.font=`11px ${getComputedStyle(document.documentElement).getPropertyValue('--mono')}`;ctx.textBaseline='middle';
+      ctx.font=`12px ${getComputedStyle(canvas).getPropertyValue('--mono')||'monospace'}`;ctx.textBaseline='middle';
       for(const side of [0,1]){
         const list=nodes.filter(n=>side?n.j>=3:n.j<3).sort((a,b)=>a.p[1]-b.p[1]);let last=30;
         for(const n of list){n.y=Math.max(last,Math.min(h-60,n.p[1]));last=n.y+42;}
@@ -361,6 +373,7 @@ const YamLabScene = (()=>{
           hits.push({j:n.j,x:x-5,y:n.y-16,w:len+10,h:32});
         }
       }
+      if(axisEnd){const label=`+J${state.j+1} 轴`,width=ctx.measureText(label).width,x=Math.max(5,Math.min(w-width-5,axisEnd[0]+8)),y=Math.max(34,Math.min(h-45,axisEnd[1]-8));ctx.fillStyle=colors.surface.css;ctx.fillRect(x-2,y-10,width+4,20);ctx.fillStyle=colors.ink.css;ctx.fillText(label,x,y);}
       ctx.fillStyle=colors.muted.css;ctx.fillText(state.hint||'拖动旋转 · 点击 J 标签观察',5,13);
       const length=.1*scale;line([w-length-10,h-14],[w-10,h-14],colors.muted.css);ctx.fillText('0.10 m',w-length-10,h-27);
       canvas.setAttribute('aria-label','当前六关节驱动力矩 / N·m：'+result.tau.map((t,j)=>`J${j+1} ${t.toFixed(4)}`).join('，')+'。拖动旋转视角。');

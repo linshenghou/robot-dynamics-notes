@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+  <title>第二课 · YAM 惯性矩阵与关节力矩</title><meta name="description" content="拖动 YAM 的姿态和角加速度，观察惯性矩阵、关节耦合、六个惯性力矩，并加回重力补偿。">
+  <link rel="icon" href="../assets/icon.svg" type="image/svg+xml"><style>__LAB_CSS__
+__INERTIA_CSS__</style><script>if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embedded');</script>
+</head>
+<body>
+<main id="yam-inertia">
+  <header class="masthead"><div><div class="eyebrow">LESSON 02 / JOINT-SPACE INERTIA</div><h1>一个关节加速，哪些电机要出力？</h1></div><a href="../index.html#inertia">第二课正文 ↗</a></header>
+  <div class="lab-status"><span>I2RT YAM · 6 DOF · 固定基座 · 含夹爪</span><span id="fixed-mass"></span><span>q̇ = 0 · 无外力 · 瞬时计算</span></div>
+  <div class="workspace">
+    <section class="control-pane" aria-labelledby="inertia-input-title">
+      <div class="pane-title"><h2 id="inertia-input-title">改变输入</h2><button class="text-button" id="reset-pose" type="button">初始姿态</button></div>
+      <div class="input-kind" role="group" aria-label="选择输入量"><button data-input="q" type="button" aria-pressed="true">角度 q</button><button data-input="a" type="button" aria-pressed="false">加速度 q̈</button></div>
+      <div id="joint-inputs"></div><p class="micro" id="input-note"></p>
+    </section>
+    <section class="scene-pane" aria-labelledby="inertia-scene-title">
+      <div class="pane-title"><h2 id="inertia-scene-title">YAM <span class="scene-subtitle">/ 关节轴与力矩</span></h2><span class="micro">N·m</span></div>
+      <canvas id="lab-canvas" role="img" aria-label="YAM 机械臂、关节正轴和电机力矩转向"></canvas>
+      <div class="scene-tools"><div><button class="quiet-button" type="button" id="view-iso">斜视</button><button class="quiet-button" type="button" id="view-top">俯视 J1</button></div><label><input id="show-acceleration" type="checkbox">质心加速度</label></div>
+      <p class="micro">直箭头标出选中关节的正轴；弧箭头表示电机力矩转向，大小看数值。</p>
+    </section>
+    <section class="torque-pane" aria-labelledby="inertia-torque-title">
+      <div class="pane-title"><h2 id="inertia-torque-title">六台电机的力矩</h2><span class="micro">N·m</span></div>
+      <div class="legend"><span class="inertia">■ 惯性 Mq̈</span><span class="gravity" id="gravity-legend" hidden>■ 重力 g</span><span>◆ 合计</span></div>
+      <svg id="torque-bars" role="img" aria-label="六关节惯性力矩与可选的重力分量"></svg>
+      <div class="micro">左负 / 右正 · 六关节共用刻度</div>
+      <label class="gravity-switch"><input id="include-gravity" type="checkbox"><span>加回第一课的重力项</span></label><div id="force-law" class="micro"></div>
+    </section>
+  </div>
+  <div class="experiment-strip"><span class="eyebrow">只改变一个加速度</span><button type="button" data-preset="0">仅 J1 加速</button><button type="button" data-preset="1">仅 J2 加速</button><button type="button" data-preset="2">仅 J3 加速</button><button type="button" id="zero-acceleration">加速度归零</button><span class="micro">预设 q̈ⱼ = 1 rad/s²，其余为零</span></div>
+  <section class="calculation" aria-labelledby="inertia-calculation-title">
+    <div class="calculation-header"><div><div class="eyebrow">从输入到输出</div><h2 id="inertia-calculation-title">先看一台电机，再看整个矩阵。</h2></div><label class="joint-select">观察输出电机 <select id="output-joint"><option value="0">J1 · τ₁</option><option value="1">J2 · τ₂</option><option value="2">J3 · τ₃</option><option value="3">J4 · τ₄</option><option value="4">J5 · τ₅</option><option value="5">J6 · τ₆</option></select></label></div>
+    <div class="detail-tabs" role="tablist" aria-label="惯性矩阵计算视图"><button id="row-tab" type="button" role="tab" data-view="row" aria-controls="row-panel" aria-selected="true">一台电机：看一行</button><button id="matrix-tab" type="button" role="tab" data-view="matrix" aria-controls="matrix-panel" aria-selected="false">六台电机：6 × 6 矩阵</button></div>
+    <div id="row-panel" role="tabpanel" aria-labelledby="row-tab">
+      <div class="panel-intro"><div><h3 id="row-heading"></h3><p>每个系数乘对应关节的加速度，再将六项相加。角加速度为零的关节，其电机仍可能需要非零力矩。</p></div><div class="math-callout inertia" id="row-law"></div></div>
+      <div class="row-layout"><div class="row-calculation" id="row-calculation" aria-label="六个惯性力矩乘积"></div><div class="selected-output"><span id="selected-label"></span><output id="selected-inertia"></output><p id="selected-gravity" class="gravity"></p><div id="selected-total"></div></div></div>
+    </div>
+    <div id="matrix-panel" role="tabpanel" aria-labelledby="matrix-tab" hidden>
+      <div class="panel-intro"><div><h3>列是加速度输入，行是电机力矩输出。</h3><p>点击列标题，只给该关节单位加速度；这一整列就给出六个惯性力矩。点击矩阵元素，选择输出电机和输入来源。</p></div><div class="math-callout inertia">τ<sub>惯性</sub> = M(q) q̈</div></div>
+      <div class="matrix-wrap" id="mass-matrix"></div><div class="matrix-key">M 的单位：kg·m²。底行为 q̈ / rad·s⁻²；右列为 Mq̈ / N·m。下划线标出观察的输出行，浅色标出选中的输入列。</div>
+    </div>
+    <div class="concept-note" id="live-calculation" aria-live="polite"></div>
+    <details id="mass-origin"><summary>这个惯性系数来自哪些连杆？</summary><div class="origin-layout"><div><div class="selected-math" id="mass-cell-title"></div><p>质心平移和连杆绕质心转动都要贡献惯性。URDF 的质量、质心和惯量固定；姿态改变它们与关节轴的几何关系。</p><div class="formula-readable">M<sub>ij</sub> = ∑<sub>k</sub> (m<sub>k</sub> J<sub>v,k,i</sub> · J<sub>v,k,j</sub> + J<sub>ω,k,i</sub><sup>T</sup> I<sub>k</sub><sup>world</sup> J<sub>ω,k,j</sub>)</div></div><div class="table-scroll"><table class="contribution-table"><thead><tr><th>连杆</th><th>质心平移</th><th>自身转动</th><th>合计 / kg·m²</th></tr></thead><tbody id="origin-rows"></tbody><tfoot id="origin-total"></tfoot></table></div></div></details>
+  </section>
+  <footer><span>YAM INERTIA LAB</span><span>固定版本 URDF · 不积分运动 · 未独立建模转子折算惯性、摩擦与弹性</span></footer>
+</main>
+<script>__DYNAMICS_ENGINE__
+const INERTIA_MODEL = __MODEL_JSON__;
+__LAB_MATH__
+__LAB_SCENE__
+__INERTIA_APP__</script>
+</body>
+</html>

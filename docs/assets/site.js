@@ -9,7 +9,7 @@
     let id=location.hash.slice(1)||'start';if(id==='content'){document.querySelector('main').focus();return;}
     if(!document.querySelector('.page#'+CSS.escape(id)))id='start';
     activePage=id;$('live-lab').hidden=!['start','gravity'].includes(id);document.querySelectorAll('.page').forEach(p=>p.hidden=p.id!==id);
-    document.querySelectorAll('.nav-link').forEach(a=>{if(a.hash==='#'+id)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+    document.querySelectorAll('.nav-link').forEach(a=>{if(a.hash==='#'+id||(a.hash==='#gravity'&&['planar','wrench'].includes(id)))a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
     document.title=$(`${id}`).dataset.title+' · 机械臂动力学手记';
     document.querySelectorAll(`#${id} iframe[data-src]`).forEach(f=>{f.src=f.dataset.src;delete f.dataset.src;});
     $('sidebar').classList.remove('open');$('menu-toggle').setAttribute('aria-expanded','false');

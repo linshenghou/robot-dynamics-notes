@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="420 80 420 270" role="img" aria-labelledby="title desc">
+<title id="title">相同质量，展开与弯折时的关节一惯性不同</title><desc id="desc">两根无质量杆长零点四和零点三米，肘部点质量一千克，末端点质量一点五千克。展开时末端距离关节一零点七米，M11等于零点八九五千克平方米。第二杆转九十度时距离零点五米，M11等于零点五三五。质量总和保持二点五千克。</desc>
+<style>text{fill:#e1e8e6;font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:18px}.muted{fill:#91a29f;font-size:17px}.value{fill:#87d5bd;font-family:Georgia,serif;font-size:26px}.rod{stroke:#a3b5b0;stroke-width:9;stroke-linecap:round}.radius{stroke:#87d5bd;stroke-width:1.5;stroke-dasharray:5 5}</style>
+<text x="28" y="31">同样的两份质量：m₁ = 1 kg，m₂ = 1.5 kg</text><text x="28" y="55" class="muted">ℓ₁ = 0.4 m · ℓ₂ = 0.3 m · 只令 q̈₁ 非零，q̈₂ = 0</text>
+<line x1="420" y1="85" x2="420" y2="320" stroke="#2b3639"/>
+<text x="28" y="101" class="muted">展开 · q₂ = 0°</text>
+<line class="rod" x1="48" y1="202" x2="224" y2="202"/><line class="rod" x1="224" y1="202" x2="356" y2="202"/>
+<circle cx="48" cy="202" r="7" fill="#e1e8e6"/><circle cx="224" cy="202" r="10" fill="#e7ad79"/><circle cx="356" cy="202" r="12" fill="#e7ad79"/>
+<text x="35" y="232">J1</text><text x="207" y="182">m₁</text><text x="340" y="178">m₂</text><line class="radius" x1="48" y1="254" x2="356" y2="254"/><text x="164" y="274" class="muted">r₂ = 0.7 m</text>
+<text x="28" y="310" class="value">M₁₁ = 0.895 kg·m²</text><text x="28" y="336" class="muted">1 × 0.4² + 1.5 × 0.7²</text>
+<text x="454" y="101" class="muted">弯折 · q₂ = 90°</text>
+<line class="rod" x1="476" y1="245" x2="652" y2="245"/><line class="rod" x1="652" y1="245" x2="652" y2="113"/>
+<line class="radius" x1="476" y1="245" x2="652" y2="113"/><circle cx="476" cy="245" r="7" fill="#e1e8e6"/><circle cx="652" cy="245" r="10" fill="#e7ad79"/><circle cx="652" cy="113" r="12" fill="#e7ad79"/>
+<text x="460" y="271">J1</text><text x="669" y="250">m₁</text><text x="671" y="116">m₂</text><text x="490" y="173" class="muted">r₂ = 0.5 m</text>
+<text x="454" y="310" class="value">M₁₁ = 0.535 kg·m²</text><text x="454" y="336" class="muted">1 × 0.4² + 1.5 × 0.5²</text>
+</svg>
