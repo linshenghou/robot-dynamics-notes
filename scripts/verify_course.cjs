@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 const assert=require('node:assert/strict');
-const P=require('../docs/assets/physics.js'),D=require('../src/gravity/dynamics.js'),G=require('../src/gravity/gravity_geometry.js'),model=require('../src/model/model.json');
+const P=require('../docs/assets/physics.js'),D=require('../src/gravity/dynamics.js'),G=require('../src/gravity/gravity_geometry.js'),Lab=require('../src/workbench/lab_math.js'),model=require('../src/model/model.json');
 let maxPlanar=0,maxPlanarNe=0,maxYam=0,maxMassInverse=0,maxMassSymmetry=0,maxMassEnergy=0,maxInertiaGravity=0,maxPlanarMassEnergy=0,minMassPivot=Infinity,seed=41;
 function random(){seed=(1664525*seed+1013904223)>>>0;return seed/2**32;}
 for(let i=0;i<40;i++){
@@ -56,6 +56,57 @@ for(let sample=0;sample<12;sample++){
  assert(Math.abs(c.current.tau[0])<1e-4);
 }
 assert(maxCouplingGradient<1e-7);
+// Independently recover velocity monomials from derivatives of the Jacobian
+// mass matrix: Gamma_ijk = (M_ij,k + M_ik,j - M_jk,i) / 2.
+let maxVelocityChristoffel=0,maxVelocitySourceChristoffel=0,maxTorqueDecomposition=0,maxVelocityLinkSum=0;
+function closeVector(actual,expected,tolerance=1e-10){actual.forEach((x,j)=>assert(Math.abs(x-expected[j])<tolerance,`${x} != ${expected[j]} at joint ${j+1}`));}
+const sumRows=rows=>rows.reduce((sum,row)=>sum.map((x,j)=>x+row[j]),Array(6).fill(0));
+for(let sample=0;sample<12;sample++){
+ const q=model.joints.filter(j=>j.active).map(j=>j.lower+(.1+.8*random())*(j.upper-j.lower)),v=q.map(()=>random()*4-2),a=q.map(()=>random()*4-2),z=Array(6).fill(0);
+ const result=Lab.compute(D,model,q,v,a),full=D.inverse(model,q,v,a).tau,eps=1e-5;
+ const derivatives=q.map((_,k)=>{const p=q.slice(),n=q.slice();p[k]+=eps;n[k]-=eps;const P=D.massFromJacobians(model,p),N=D.massFromJacobians(model,n);return P.map((row,i)=>row.map((x,j)=>(x-N[i][j])/(2*eps)));});
+ const gamma=(i,j,k)=>(derivatives[k][i][j]+derivatives[j][i][k]-derivatives[i][j][k])/2;
+ const squareExpected=q.map((_,i)=>v.reduce((sum,speed,j)=>sum+gamma(i,j,j)*speed*speed,0));
+ const crossExpected=q.map((_,i)=>{let sum=0;for(let j=0;j<6;j++)for(let k=j+1;k<6;k++)sum+=2*gamma(i,j,k)*v[j]*v[k];return sum;});
+ for(let i=0;i<6;i++){
+  maxVelocityChristoffel=Math.max(maxVelocityChristoffel,Math.abs(result.centrifugal[i]-squareExpected[i]),Math.abs(result.coriolis[i]-crossExpected[i]));
+  maxTorqueDecomposition=Math.max(maxTorqueDecomposition,Math.abs(full[i]-(result.acc[i]+result.g[i]+result.centrifugal[i]+result.coriolis[i])));
+ }
+ closeVector(result.tau,full);closeVector(result.c,result.centrifugal.map((x,j)=>x+result.coriolis[j]));
+ const squares=result.velocitySources.squares,pairs=result.velocitySources.pairs();
+ assert.equal(squares.length,6);assert.equal(pairs.length,15);assert.strictEqual(result.velocitySources.pairs(),pairs);
+ closeVector(sumRows(squares.map(s=>s.tau)),result.centrifugal);closeVector(sumRows(pairs.map(s=>s.tau)),result.coriolis);
+ for(const source of squares){const j=source.joint;assert.equal(source.product,v[j]**2);source.tau.forEach((x,i)=>maxVelocitySourceChristoffel=Math.max(maxVelocitySourceChristoffel,Math.abs(x-gamma(i,j,j)*v[j]**2)));}
+ for(const source of pairs){const [j,k]=source.joints;assert.equal(source.product,v[j]*v[k]);source.tau.forEach((x,i)=>maxVelocitySourceChristoffel=Math.max(maxVelocitySourceChristoffel,Math.abs(x-2*gamma(i,j,k)*v[j]*v[k])));}
+ for(const component of ['centrifugal','coriolis']){
+  const sum=sumRows(Object.values(result[component+'ByLink']));
+  sum.forEach((x,i)=>maxVelocityLinkSum=Math.max(maxVelocityLinkSum,Math.abs(x-result[component][i])));
+ }
+ for(const name of Object.keys(result.velocityByLink)){
+  closeVector(result.velocityByLink[name],result.centrifugalByLink[name].map((x,j)=>x+result.coriolisByLink[name][j]));
+  closeVector(sumRows(squares.map(s=>s.byLink[name])),result.centrifugalByLink[name]);
+  closeVector(sumRows(pairs.map(s=>s.byLink[name])),result.coriolisByLink[name]);
+ }
+ const reversed=Lab.compute(D,model,q,v.map(x=>-x),a),scaled=Lab.compute(D,model,q,v.map(x=>2*x),a);
+ closeVector(reversed.centrifugal,result.centrifugal);closeVector(reversed.coriolis,result.coriolis);
+ closeVector(scaled.centrifugal,result.centrifugal.map(x=>4*x));closeVector(scaled.coriolis,result.coriolis.map(x=>4*x));
+ const flip=sample%6,flipped=Lab.compute(D,model,q,v.map((x,j)=>j===flip?-x:x),a);
+ closeVector(flipped.centrifugal,result.centrifugal);
+ flipped.velocitySources.pairs().forEach((source,i)=>closeVector(source.tau,pairs[i].tau.map(x=>source.joints.includes(flip)?-x:x)));
+ const rest=Lab.compute(D,model,q,z,a);closeVector(rest.centrifugal,z);closeVector(rest.coriolis,z);
+ for(let j=0;j<6;j++){const single=z.slice();single[j]=v[j];const only=Lab.compute(D,model,q,single,a);closeVector(only.coriolis,z);closeVector(only.centrifugal,only.c);}
+}
+assert(maxVelocityChristoffel<1e-7);assert(maxVelocitySourceChristoffel<1e-7);assert(maxTorqueDecomposition<1e-10);assert(maxVelocityLinkSum<1e-10);
+// Sparse velocities skip unnecessary passes; pair details are computed once
+// on demand, and remain tied to the state that produced the result.
+{
+ let inverseCalls=0;const tracked={...D,inverse:(...args)=>{inverseCalls++;return D.inverse(...args);}},z=Array(6).fill(0),q=z.slice(),v=[.7,0,-.4,0,0,0];
+ const sparse=Lab.compute(tracked,model,q,v,z);assert.equal(inverseCalls,4);
+ const expected=Lab.compute(D,model,q,v,z).velocitySources.pairs();q[0]=.9;v[0]=2;
+ const pairs=sparse.velocitySources.pairs();assert.equal(inverseCalls,5);
+ pairs.forEach((source,i)=>closeVector(source.tau,expected[i].tau));sparse.velocitySources.pairs();assert.equal(inverseCalls,5);
+ inverseCalls=0;const rest=Lab.compute(tracked,model,z,z,z);rest.velocitySources.pairs();assert.equal(inverseCalls,2);
+}
 const base={mode:'off',mass:2,length:.35,kp:10,kd:.7,target:.3,external:0,gravityRatio:1,friction:0};
 function evolve(initial,params,seconds){let s={...initial};const n=Math.round(seconds*240);for(let i=0;i<n;i++)s=P.step(s,params,1/240);return s;}
 const initial={q:.3,v:0},free=evolve(initial,base,5);
@@ -67,4 +118,4 @@ assert(Math.abs(damped.v-.8*decay)<1e-8);assert(Math.abs(damped.q-(.3+.8*I/base.
 const held=evolve(initial,{...base,mode:'hold',external:1},12);
 assert(Math.abs(held.q-(base.target+1/base.kp))<1e-7);
 const drifting=evolve(initial,{...base,mode:'drag',gravityRatio:.9},.4);assert(drifting.q<initial.q);
-console.log(JSON.stringify({passed:true,randomPoses:40,maxPlanarGradientError:maxPlanar,maxPlanarNewtonEulerError:maxPlanarNe,maxYamGradientError:maxYam,maxMassInverseError:maxMassInverse,maxMassSymmetryError:maxMassSymmetry,maxMassEnergyError:maxMassEnergy,minPositiveMassPivot:minMassPivot,maxInertiaGravityError:maxInertiaGravity,maxPlanarMassEnergyError:maxPlanarMassEnergy,maxCouplingGradientError:maxCouplingGradient,freePendulumEnergyError:energyError,pdEquilibriumError:Math.abs(held.q-.4),checks:['YAM mass matrix vs inverse dynamics unit columns','mass symmetry and positive definiteness','mass matrix vs independently differentiated body kinetic energy','inertia and gravity torque superposition','2R mass matrix vs point kinetic energy','single-joint change and upstream link contributions','potential gradients and static Newton-Euler agreement','YAM link sum and COM equivalence','energy conservation','gravity-compensated coasting','analytic damping decay','PD equilibrium','gravity estimation drift']},null,2));
+console.log(JSON.stringify({passed:true,randomPoses:40,velocityDecompositionPoses:12,maxPlanarGradientError:maxPlanar,maxPlanarNewtonEulerError:maxPlanarNe,maxYamGradientError:maxYam,maxMassInverseError:maxMassInverse,maxMassSymmetryError:maxMassSymmetry,maxMassEnergyError:maxMassEnergy,minPositiveMassPivot:minMassPivot,maxInertiaGravityError:maxInertiaGravity,maxPlanarMassEnergyError:maxPlanarMassEnergy,maxCouplingGradientError:maxCouplingGradient,maxVelocityChristoffelError:maxVelocityChristoffel,maxVelocitySourceChristoffelError:maxVelocitySourceChristoffel,maxTorqueDecompositionError:maxTorqueDecomposition,maxVelocityLinkSumError:maxVelocityLinkSum,freePendulumEnergyError:energyError,pdEquilibriumError:Math.abs(held.q-.4),checks:['YAM mass matrix vs inverse dynamics unit columns','mass symmetry and positive definiteness','mass matrix vs independently differentiated body kinetic energy','inertia and gravity torque superposition','2R mass matrix vs point kinetic energy','single-joint change and upstream link contributions','potential gradients and static Newton-Euler agreement','YAM link sum and COM equivalence','centrifugal and Coriolis sources vs mass-matrix Christoffel derivatives','four torque components vs direct inverse dynamics','velocity component and source sums by link','zero and single-joint velocity limits','velocity reversal, individual source sign, and quadratic scaling','sparse and cached velocity source evaluation','energy conservation','gravity-compensated coasting','analytic damping decay','PD equilibrium','gravity estimation drift']},null,2));

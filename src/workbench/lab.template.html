@@ -14,6 +14,14 @@
     <div><div class="eyebrow">MODERN ROBOTICS / CHAPTER 08</div><h1>把每个关节的力矩拆开看</h1></div>
     <div class="model-label">I2RT YAM <span>6 DOF · 固定基座 · 含夹爪</span></div>
   </header>
+  <div class="stage-line">
+    <div class="stage-buttons" role="group" aria-label="实验阶段">
+      <button type="button" data-mode="static" aria-pressed="true">01 <span>静止悬停</span></button>
+      <button type="button" data-mode="acc" aria-pressed="false">02 <span>加入加速度</span></button>
+      <button type="button" data-mode="motion" aria-pressed="false">03 <span>加入速度</span></button>
+    </div>
+    <div id="stage-note" class="muted"></div>
+  </div>
   <div class="workspace">
     <section class="control-pane" aria-labelledby="input-title">
       <div class="pane-title"><h2 id="input-title">关节角度</h2><button type="button" class="text-button" id="reset-pose">重置</button></div>
@@ -28,27 +36,29 @@
     </section>
     <section class="torque-pane" aria-labelledby="torque-title">
       <div class="pane-title"><h2 id="torque-title">关节补偿力矩</h2><span class="micro">N·m</span></div>
-      <div class="intro-legend">静止姿态 · 重力补偿</div><div class="legend"><span class="inertia">■ 惯性</span><span class="velocity">■ 速度项</span><span class="gravity">■ 重力</span><span>◆ 合计</span></div>
-      <svg id="torque-bars" role="img" aria-label="六个关节的惯性、速度、重力分量和总力矩"></svg>
-      <div class="torque-heat-key" aria-label="力矩绝对值色标：蓝色表示零，红色表示十六牛米或以上"><span>力矩大小 |τ|</span><div class="torque-heat-ramp"></div><div class="torque-heat-ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>≥16 N·m</span></div><small>连杆颜色对应该连杆的入端关节。<br>蓝色小 · 红色大；正负看数字与左右方向。</small></div>
+      <div class="legend"><span class="gravity">■ 重力</span><span class="inertia">■ 惯性</span><span class="coriolis">■ 科氏</span><span class="centrifugal">■ 离心</span><span>◆ 合计</span></div>
+      <svg id="torque-bars" role="img" aria-label="六个关节的重力、惯性、科氏、离心四项分量与总驱动力矩"></svg>
+      <div class="torque-heat-key" aria-label="三维连杆总力矩绝对值色标：蓝色表示零，红色表示十六牛米或以上"><span>三维连杆 · 总力矩 |τ|</span><div class="torque-heat-ramp"></div><div class="torque-heat-ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>≥16 N·m</span></div><small>连杆颜色对应该连杆的入端关节。<br>上方条形与下方数值按四类力矩着色。</small></div>
       <div class="micro">左负 / 右正 · 六关节共用刻度<br><span class="advanced-note">正负分量可能相互抵消</span></div>
     </section>
   </div>
+  <section class="component-overview" aria-labelledby="component-title">
+    <div class="component-heading"><div><div class="eyebrow">SIX JOINTS / FOUR COMPONENTS</div><h2 id="component-title">每个关节，四项力矩一起看</h2></div><span class="micro">单位 N·m</span></div>
+    <p class="component-caption" id="component-caption">每行对应一个关节；四项相加得到总力矩。微条共用刻度，向左为负、向右为正。点击关节可选择观察对象。显示值已四舍五入，合计使用完整精度计算。</p>
+    <p class="component-scroll-hint">左右滑动表格，查看全部四项与合计 →</p>
+    <div id="torque-components" class="table-scroll" role="region" tabindex="0" aria-label="六关节重力、惯性、科氏、离心与合计力矩数值表" aria-describedby="component-caption"></div>
+    <div id="component-state-note" class="component-state-note"></div>
+    <div class="velocity-presets" role="group" aria-label="速度对照实验"><span class="micro">速度对照</span><button type="button" class="quiet-button" data-velocity-preset="single">仅 J2 转动</button><button type="button" class="quiet-button" data-velocity-preset="pair">J2 与 J3 同转</button><button type="button" class="quiet-button" data-velocity-preset="reverse">反向 J3</button><button type="button" class="text-button" id="zero-velocity">清零速度</button><span class="micro preset-note">保留姿态；前三个预设将加速度置零</span></div>
+  </section>
   <div class="after-workspace"><div class="eyebrow">从观察到计算</div><h2>现在，把力矩拆开看。</h2><p>先看静止时的重力补偿，再加入加速度和速度，逐项观察力矩的来源。</p></div>
-  <div class="stage-line">
-    <div class="stage-buttons" role="group" aria-label="实验阶段">
-      <button type="button" data-mode="static" aria-pressed="true">01 <span>静止悬停</span></button>
-      <button type="button" data-mode="acc" aria-pressed="false">02 <span>加入加速度</span></button>
-      <button type="button" data-mode="motion" aria-pressed="false">03 <span>加入速度</span></button>
-    </div>
-    <div id="stage-note" class="muted"></div>
-  </div>
   <section class="equation" aria-label="动力学公式；点击分量展开计算">
     <div class="equation-result"><div class="formula">τ</div><span>六个关节的驱动力矩</span></div>
     <div class="operator">=</div>
     <button class="equation-term inertia" type="button" data-panel="mass" aria-pressed="false"><div class="formula">M(q) q̈</div><span>惯性项</span><small>6 × 6 矩阵 × 6 维加速度</small><b id="mass-status"></b></button>
     <div class="operator">+</div>
-    <button class="equation-term velocity" type="button" data-panel="velocity" aria-pressed="false"><div class="formula">c(q, q̇)</div><span>科氏 / 离心项</span><small>c = C(q, q̇) q̇</small><b id="velocity-status"></b></button>
+    <button class="equation-term coriolis" type="button" data-panel="velocity" aria-pressed="false"><div class="formula">c<sub>cor</sub>(q, q̇)</div><span>科氏项</span><small>不同关节速度的交叉乘积</small><b id="coriolis-status"></b></button>
+    <div class="operator">+</div>
+    <button class="equation-term centrifugal" type="button" data-panel="velocity" aria-pressed="false"><div class="formula">c<sub>cen</sub>(q, q̇)</div><span>离心项</span><small>单个关节速度的平方</small><b id="centrifugal-status"></b></button>
     <div class="operator">+</div>
     <button class="equation-term gravity" type="button" data-panel="gravity" aria-pressed="true"><div class="formula">g(q)</div><span>重力补偿项</span><small>各连杆重力矩的反向合计</small><b id="gravity-status"></b></button>
   </section>
@@ -57,7 +67,7 @@
     <div class="pipeline" aria-label="数据计算流程"><span>URDF <small>质量 · 质心 · 惯量 · 关节</small></span><b>→</b><span>当前姿态 q <small>世界坐标与关节轴</small></span><b>→</b><span>M、c、g <small>由模型计算</small></span><b>→</b><span>τ₁ … τ₆ <small>电机需要的力矩</small></span></div>
     <div class="detail-tabs" role="tablist" aria-label="展开计算项"><button id="tab-gravity" type="button" role="tab" data-detail="gravity" aria-controls="panel-gravity" aria-selected="true">g · 连杆贡献</button><button id="tab-mass" type="button" role="tab" data-detail="mass" aria-controls="panel-mass" aria-selected="false">M · 矩阵与乘法</button><button id="tab-velocity" type="button" role="tab" data-detail="velocity" aria-controls="panel-velocity" aria-selected="false">c · 速度耦合</button></div>
     <div id="panel-gravity" role="tabpanel" aria-labelledby="tab-gravity">
-      <div class="panel-intro"><div><h3>每根连杆，把多少重力矩传给每个关节？</h3><p>每一列对应一个关节。把这一列的贡献相加，就是该关节的 g。上游连杆对下游关节的贡献为零。</p></div><div class="math-callout gravity">g<sub>j</sub> = −∑<sub>k</sub> a<sub>j</sub> · [(c<sub>k</sub> − p<sub>j</sub>) × m<sub>k</sub>g<sub>w</sub>]</div></div>
+      <div class="panel-intro"><div><h3>每根连杆，把多少重力矩传给每个关节？</h3><p>每一列对应一个关节。把这一列的贡献相加，就是该关节的 g。上游连杆对下游关节的贡献为零。</p></div><div class="math-callout gravity">g<sub>j</sub> = −∑<sub>k∈下游(j)</sub> a<sub>j</sub> · [(c<sub>k</sub> − p<sub>j</sub>) × m<sub>k</sub>g<sub>w</sub>]</div></div>
       <div class="gravity-grid"><div><div class="table-caption">补偿力矩贡献 / N·m · 点击单元格查看计算</div><div class="matrix-wrap" id="gravity-matrix"></div><div class="matrix-key">填色深浅 = 绝对值大小；正负看数值。最后一行 = 各列之和。</div></div><div class="numeric-derivation" id="gravity-derivation" aria-live="polite"></div></div>
       <div class="concept-note">g<sub>w</sub> = [0, 0, −9.81] m/s² 是空间重力加速度；g(q) 是六维关节补偿力矩。负号表示电机抵消重力产生的关节力矩。</div>
     </div>
@@ -69,13 +79,18 @@
       <details id="mass-origin" open><summary>选中的 M 元素从哪里来？</summary><div class="origin-layout"><div><div id="mass-cell-title" class="selected-math"></div><div class="formula-readable">M<sub>ij</sub> = ∑<sub>k</sub> [m<sub>k</sub> J<sub>v,k,i</sub> · J<sub>v,k,j</sub> + J<sub>ω,k,i</sub><sup>T</sup> I<sub>k</sub><sup>world</sup> J<sub>ω,k,j</sub>]</div><p>前一项来自质心的平移，后一项来自连杆绕质心的转动。每根连杆的质量与惯量保持不变；姿态改变了它们到各个关节的运动映射。</p><p class="micro">J<sub>v,k,j</sub> = a<sub>j</sub> × (c<sub>k</sub> − p<sub>j</sub>)，J<sub>ω,k,j</sub> = a<sub>j</sub>；不属于该连杆上游的关节列为 0。这里的惯量已旋转到世界坐标系。</p></div><div class="table-scroll"><table class="contribution-table"><thead><tr><th>连杆</th><th>平移部分</th><th>转动部分</th><th>合计</th></tr></thead><tbody id="mass-origin-rows"></tbody><tfoot id="mass-origin-total"></tfoot></table></div></div></details>
     </div>
     <div id="panel-velocity" role="tabpanel" aria-labelledby="tab-velocity" hidden>
-      <div class="panel-intro"><div><h3>有速度时，还需要多少力矩？</h3><p>c = Cq̇ 包含科氏与离心效应。它依赖姿态和全部关节速度；q̇ = 0 时，这一整项为零。</p></div><div class="math-callout velocity">c<sub>i</sub> = ∑<sub>j,k</sub> Γ<sub>ijk</sub>(q) q̇<sub>j</sub>q̇<sub>k</sub></div></div>
-      <div class="concept-note">固定 q，把所有速度同时乘 2，c 会乘 4。此处将速度项直接作为六维向量计算，避免把不唯一的 C 矩阵当成唯一物理量。</div>
-      <div class="velocity-layout"><div><div class="table-caption">当前速度与模型计算出的速度项</div><table class="contribution-table"><thead><tr><th>关节</th><th>q̇ / rad·s⁻¹</th><th>c / N·m</th><th>2q̇ 时的 c / N·m</th></tr></thead><tbody id="velocity-rows"></tbody></table></div><div><h3 id="velocity-link-title"></h3><svg id="velocity-links" role="img" aria-label="所选关节速度项的各连杆贡献"></svg></div></div>
+      <div class="panel-intro"><div><h3>有速度时，把科氏项与离心项分开看</h3><p>c = c<sub>cor</sub> + c<sub>cen</sub> = Cq̇。两项都依赖当前姿态；全部速度为零时，两项都为零。这里按关节坐标中的速度乘积拆分。</p></div><div class="math-callout velocity">c<sub>i</sub> = ∑<sub>j,k</sub> Γ<sub>ijk</sub>(q) q̇<sub>j</sub>q̇<sub>k</sub></div></div>
+      <div class="velocity-split">
+        <div class="velocity-definition coriolis"><h3>科氏 · 两个速度的交叉项</h3><div class="formula-readable">c<sub>cor,i</sub> = ∑<sub>j&lt;k</sub> 2Γ<sub>ijk</sub>(q) q̇<sub>j</sub>q̇<sub>k</sub></div><p>需要至少两个关节同时转动。固定姿态，只反转其中一个速度，相应的交叉项就会反号。</p></div>
+        <div class="velocity-definition centrifugal"><h3>离心 · 一个速度的平方项</h3><div class="formula-readable">c<sub>cen,i</sub> = ∑<sub>j</sub> Γ<sub>ijj</sub>(q) q̇<sub>j</sub><sup>2</sup></div><p>一个关节转动也可能产生。固定姿态，反转该关节速度不改变这个平方项的符号。</p></div>
+      </div>
+      <div class="concept-note">这里显示的是电机所需的驱动力矩，符号遵循关节轴右手定则，不是旋转参考系中的虚拟力。固定 q，把所有速度同时乘 2，两项都乘 4。直接拆分速度多项式，避免把不唯一的 C 矩阵当成唯一物理量。</div>
+      <div class="velocity-layout"><div><div class="table-caption">当前速度与两项驱动力矩 / N·m</div><div class="table-scroll"><table class="contribution-table velocity-table"><thead><tr><th>关节</th><th>速度 / rad·s⁻¹</th><th class="coriolis">科氏</th><th class="centrifugal">离心</th><th>合计 c</th><th>2q̇ 时的 c</th></tr></thead><tbody id="velocity-rows"></tbody></table></div></div><div><h3 id="velocity-link-title"></h3><div class="legend velocity-link-legend"><span class="coriolis">■ 科氏</span><span class="centrifugal">■ 离心</span></div><svg id="velocity-links" role="img" aria-label="所选关节的各连杆科氏与离心驱动力矩贡献"></svg></div></div>
+      <details id="velocity-source-details" class="velocity-source-details"><summary>继续展开：哪些关节速度产生了这些力矩？</summary><h3 id="velocity-source-title"></h3><p class="micro">平方来源进入离心栏，两个不同关节的交叉来源进入科氏栏；当前速度乘积为零的来源也保留。Γ 由质量矩阵随姿态的变化得到：</p><div class="formula-readable christoffel-formula">Γ<sub>ijk</sub> = ½ (<span>∂M<sub>ij</sub>/∂q<sub>k</sub></span> + <span>∂M<sub>ik</sub>/∂q<sub>j</sub></span> − <span>∂M<sub>jk</sub>/∂q<sub>i</sub></span>)</div><div class="table-scroll"><table class="contribution-table velocity-source-table"><thead><tr><th>来源</th><th>速度乘积 / rad²·s⁻²</th><th class="coriolis">科氏 / N·m</th><th class="centrifugal">离心 / N·m</th></tr></thead><tbody id="velocity-source-rows"></tbody></table></div></details>
     </div>
     <div class="joint-total" id="joint-total" aria-live="polite"></div>
   </section>
-  <details class="source-details"><summary>模型参数、坐标约定与数据来源</summary><div class="source-grid"><div><p>官方 I2RT YAM v1 URDF，版本 <code>120c3c8</code>。六个旋转关节；两指锁定于 0；固定基座；包含原夹爪质量；无额外负载、外力、摩擦或柔性。</p><p>这里是瞬时逆动力学计算：拖动输入在比较不同状态，不把速度积分成轨迹。静止模式和加速度模式把不参与的状态量明确置零。</p><p><a href="https://github.com/i2rt-robotics/i2rt/blob/120c3c81400171174604e503943f8d1ebc891058/i2rt/robot_models/arm/yam/v1/yam.urdf" target="_blank" rel="noreferrer">查看原始 URDF ↗</a> · CAD 外观网格已简化，动力学参数保留原精度。</p></div><div class="table-scroll"><table class="contribution-table"><thead><tr><th>连杆</th><th>质量 / kg</th><th>URDF 局部质心 xyz / m</th></tr></thead><tbody id="urdf-rows"></tbody></table></div></div></details>
+  <details class="source-details"><summary>模型参数、坐标约定与数据来源</summary><div class="source-grid"><div><p>官方 I2RT YAM v1 URDF，版本 <code>120c3c8</code>。六个旋转关节；两指锁定于 0；固定基座；包含原夹爪质量；无额外负载、外力、摩擦或柔性。</p><p>这里是瞬时逆动力学计算：拖动输入在比较不同状态，不把速度积分成轨迹。静止模式和加速度模式把不参与的状态量明确置零。</p><p><a href="https://github.com/i2rt-robotics/i2rt/blob/120c3c81400171174604e503943f8d1ebc891058/i2rt/robot_models/arm/yam/v1/yam.urdf" target="_blank" rel="noreferrer">查看原始 URDF ↗</a> · CAD 外观网格已简化，动力学参数保留原精度。</p><p><a href="https://modernrobotics.northwestern.edu/nu-gm-book-resource/8-1-lagrangian-formulation-of-dynamics-part-2-of-2/" target="_blank" rel="noreferrer">Modern Robotics 8.1 · 拉格朗日动力学（下）↗</a>：速度平方项与不同关节速度交叉项分别对应向心与科氏效应。教材使用 centripetal（向心）；本实验台的「离心」栏显示平方项对应的电机驱动力矩贡献。</p></div><div class="table-scroll"><table class="contribution-table"><thead><tr><th>连杆</th><th>质量 / kg</th><th>URDF 局部质心 xyz / m</th></tr></thead><tbody id="urdf-rows"></tbody></table></div></div></details>
   <footer><span>YAM DYNAMICS LAB</span><span>URDF 模型预测 · 正力矩遵循关节轴右手定则 · 外部力矩 τ<sub>ext</sub> = 0</span></footer>
 </main>
 <script>__DYNAMICS_ENGINE__

@@ -4,6 +4,7 @@
   const intro=document.documentElement.classList.contains('intro');
   const example=[0,1.3,1,0,0,0],key=intro?'rdn-workbench-intro-v1':'rdn-workbench-full-v1';
   const state={q:example.slice(),a:Z(),v:Z(),j:1,col:1,link:'link3',mode:'static',panel:'gravity',input:'q',yaw:.7,pitch:.4,com:true,heat:intro};
+  const components=[{key:'g',id:'gravity',name:'重力'},{key:'acc',id:'inertia',name:'惯性'},{key:'coriolis',id:'coriolis',name:'科氏'},{key:'centrifugal',id:'centrifugal',name:'离心'}];
   const fmt=(n,d=3)=>Math.abs(n)<.5*10**(-d)?(0).toFixed(d):n.toFixed(d),sgn=(n,d=3)=>(n>=.5*10**(-d)?'+':'')+fmt(n,d),brief=n=>Math.abs(n)<.0005?'≈0':sgn(n),mfmt=n=>Math.abs(n)<1e-9?'0':Math.abs(n)<.0005?n.toExponential(1):fmt(n),vec=(v,d=4)=>'['+v.map(x=>fmt(x,d)).join(', ')+']';
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function restore(s){
@@ -20,7 +21,6 @@
     if(state.mode==='static'||(state.mode==='acc'&&state.input==='v'))state.input='q';
   }
   try{restore(JSON.parse(localStorage.getItem(key)));}catch{}
-  if(intro){state.mode='static';state.a=Z();state.v=Z();state.input='q';state.panel='gravity';}
   function save(){try{localStorage.setItem(key,JSON.stringify(state));}catch{} }
   $('joint-inputs').innerHTML=active.map((joint,i)=>`<div class="joint-input"><div class="input-head"><button class="joint-button" type="button" data-joint="${i}" aria-label="观察 J${i+1}">J${i+1}</button><label class="input-value"><input id="number-${i}" type="number" aria-label="J${i+1} 角度"><small id="unit-${i}">°</small></label></div><input id="range-${i}" type="range" aria-label="J${i+1} 角度"></div>`).join('');
   const canvas=$('lab-canvas'),scene=YamLabScene.create(canvas,D,model);let result,computeCount=0;
@@ -38,30 +38,39 @@
       $('unit-'+i).textContent=cfg.unit;
     }
     $('output-joint').value=state.j;$('show-com').checked=state.com;
-    $('stage-note').textContent={static:'q̇ = 0，q̈ = 0 → τ = g(q)',acc:'q̇ = 0 → τ = M(q)q̈ + g(q)',motion:'τ = M(q)q̈ + c(q,q̇) + g(q)'}[state.mode];
-    $('input-note').textContent=state.input==='q'?(intro?'拖动滑块，观察六个关节的力矩如何一起变化。':'拖动角度会改变几何关系、M 和 g。点击 J 标签选择观察关节。'):state.input==='a'?'加速度输入是当前瞬间的 q̈；在姿态不变时，M 不变。':'速度输入是当前瞬间的 q̇；计算科氏 / 离心项，不积分运动轨迹。';
+    $('stage-note').textContent={static:'q̇ = 0，q̈ = 0 → τ = g(q)',acc:'q̇ = 0 → τ = M(q)q̈ + g(q)',motion:'τ = 惯性 + 科氏 + 离心 + 重力'}[state.mode];
+    $('input-title').textContent={q:'关节角度',a:'关节加速度',v:'关节速度'}[state.input];
+    $('torque-title').textContent='关节驱动力矩';
+    $('input-note').textContent=state.input==='q'?'拖动角度会改变力矩分量。点击 J 标签选择观察关节。':state.input==='a'?'加速度输入是当前瞬间的 q̈；在姿态不变时，M 不变。':'速度输入是当前瞬间的 q̇；科氏与离心分开展示，不积分运动轨迹。';
     $('mass-status').textContent=state.a.every(x=>x===0)?'当前 q̈ = 0 → 此项为 0':'当前 M × q̈';
-    $('velocity-status').textContent=state.v.every(x=>x===0)?'当前 q̇ = 0 → 此项为 0':'当前 q̇ ≠ 0';
+    $('coriolis-status').textContent=state.v.filter(x=>x!==0).length<2?'不足两个非零速度 → 此项为 0':'不同关节速度的交叉乘积';
+    $('centrifugal-status').textContent=state.v.every(x=>x===0)?'当前 q̇ = 0 → 此项为 0':'各关节速度的平方项';
     $('gravity-status').textContent='由当前姿态决定';
+    $('component-state-note').textContent={static:'静止：只有重力补偿；惯性、科氏、离心均为 0。切换「加入加速度」「加入速度」观察动态分量。',acc:'加速度已启用：惯性与重力共同决定总力矩。当前速度为 0，科氏、离心均为 0。',motion:'同一瞬间的四项力矩相加得到总力矩。正负分量可能抵消；速度为 0 的分量仍会明确列出。'}[state.mode];
   }
   const svgFinish=svg=>svg.querySelectorAll('text').forEach(t=>{t.style.fill=t.getAttribute('fill')||'var(--ink)';});
   function torqueBars(){
     if(!result)return;const svg=$('torque-bars'),w=svg.clientWidth;if(!w)return;const wide=w>550||(intro&&innerWidth<=520),cols=wide?2:1,cellW=w/cols,h=wide?218:390;
     svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('height',h);
-    const bound=Math.max(.02,...result.tau.map((_,i)=>{const parts=[result.acc[i],result.c[i],result.g[i]];return Math.max(parts.filter(x=>x>0).reduce((a,b)=>a+b,0),-parts.filter(x=>x<0).reduce((a,b)=>a+b,0));}))*1.12;
-    let s=`<title>${intro?'六关节重力补偿力矩；蓝色小、红色大；菱形标示数值':'六关节力矩分解；菱形为分量之和'}</title>`;
+    const bound=Math.max(.02,...result.tau.map((_,i)=>{const parts=components.map(c=>result[c.key][i]);return Math.max(parts.filter(x=>x>0).reduce((a,b)=>a+b,0),-parts.filter(x=>x<0).reduce((a,b)=>a+b,0));}))*1.12;
+    let s='<title>六关节力矩分解：重力、惯性、科氏、离心；菱形为四项之和</title>';
     for(let j=0;j<6;j++){
       const col=wide?j%2:0,row=wide?Math.floor(j/2):j,off=col*cellW,y=14+row*60,left=off+10,right=off+cellW-(col===0&&wide?24:4),width=right-left,x=v=>left+(v/bound+1)*width/2;
-      const heat=intro?YamTorqueHeat.css(result.tau[j]):null,labelClass=intro?'torque-heat-label chart-label':'chart-label',valueClass=intro?'torque-heat-label':'';
-      s+=`<g class="torque-row" data-joint="${j}" data-torque="${result.tau[j].toFixed(6)}" data-heat="${heat||''}"><text x="${left}" y="${y}" class="${labelClass}" ${intro?`fill="${heat}"`:''}>J${j+1}</text><text x="${right}" y="${y}" text-anchor="end" class="${valueClass}" ${intro?`fill="${heat}"`:''}>${sgn(result.tau[j])}</text><rect x="${left}" y="${y+11}" width="${width}" height="15" fill="var(--soft)"/><line x1="${x(0)}" y1="${y+7}" x2="${x(0)}" y2="${y+32}" stroke="var(--muted)" stroke-width=".7"/>`;
-      if(intro){const value=result.tau[j];s+=`<rect class="torque-heat-bar" x="${Math.min(x(0),x(value))}" y="${y+11}" width="${Math.abs(x(value)-x(0))}" height="15" fill="${heat}"><title>J${j+1} 重力补偿 ${value.toFixed(6)} N·m</title></rect>`;}
-      else {let pos=0,neg=0;for(const [val,color,name] of [[result.acc[j],'inertia','惯性'],[result.c[j],'velocity','速度项'],[result.g[j],'gravity','重力']]){const from=val>=0?pos:neg,to=from+val;if(val>=0)pos=to;else neg=to;s+=`<rect x="${Math.min(x(from),x(to))}" y="${y+11}" width="${Math.abs(x(to)-x(from))}" height="15" fill="var(--${color})"><title>J${j+1} ${name} ${val.toFixed(6)} N·m</title></rect>`;}}
-      const tx=x(result.tau[j]);s+=`<path d="M${tx},${y+25} l4,5 -4,5 -4,-5 Z" fill="${heat||'var(--ink)'}"/>`;
+      s+=`<g class="torque-row" data-joint="${j}" data-torque="${result.tau[j]}"><text x="${left}" y="${y}" class="chart-label">J${j+1}</text><text x="${right}" y="${y}" text-anchor="end">${sgn(result.tau[j])}</text><rect x="${left}" y="${y+11}" width="${width}" height="15" fill="var(--soft)"/><line x1="${x(0)}" y1="${y+7}" x2="${x(0)}" y2="${y+32}" stroke="var(--muted)" stroke-width=".7"/>`;
+      let pos=0,neg=0;
+      for(const part of components){const val=result[part.key][j],from=val>=0?pos:neg,to=from+val;if(val>=0)pos=to;else neg=to;s+=`<rect class="torque-component" data-component="${part.id}" data-value="${val}" x="${Math.min(x(from),x(to))}" y="${y+11}" width="${Math.abs(x(to)-x(from))}" height="15" fill="var(--${part.id})"><title>J${j+1} ${part.name} ${val.toFixed(6)} N·m</title></rect>`;}
+      const tx=x(result.tau[j]);s+=`<path d="M${tx},${y+25} l4,5 -4,5 -4,-5 Z" fill="var(--ink)"/>`;
       if(j===state.j)s+=`<line x1="${left}" y1="${y+40}" x2="${right}" y2="${y+40}" stroke="var(--inertia)" stroke-width="1"/>`;
       s+='</g>';
     }
-    for(let col=0;col<cols;col++){const left=col*cellW+10,right=(col+1)*cellW-(col===0&&wide?24:4);s+=`<text x="${left}" y="${h-7}">${fmt(-bound,1)}</text><text x="${(left+right)/2}" y="${h-7}" text-anchor="middle">0</text><text x="${right}" y="${h-7}" text-anchor="end">${fmt(bound,1)} N·m</text>`;}
+    for(let col=0;col<cols;col++){const left=col*cellW+10,right=(col+1)*cellW-(col===0&&wide?24:4);s+=`<text x="${left}" y="${h-7}">${fmt(-bound,bound<.1?3:1)}</text><text x="${(left+right)/2}" y="${h-7}" text-anchor="middle">0</text><text x="${right}" y="${h-7}" text-anchor="end">${fmt(bound,bound<.1?3:1)}</text>`;}
     svg.innerHTML=s;svgFinish(svg);
+  }
+  function componentTable(){
+    const parts=[...components,{key:'tau',id:'total',name:'总力矩'}],bound=Math.max(.001,...parts.flatMap(c=>result[c.key].map(Math.abs)));
+    const focused=document.activeElement?.closest('#torque-components [data-output-joint]')?.dataset.outputJoint;
+    $('torque-components').innerHTML=`<table class="component-table"><caption class="sr-only">六个关节的重力、惯性、科氏、离心与总力矩，单位 N·m</caption><thead><tr><th scope="col">关节</th>${parts.map(c=>`<th scope="col" class="${c.id}">${c.name}${c.id==='total'?' ◆':''}</th>`).join('')}</tr></thead><tbody>${result.tau.map((_,j)=>`<tr data-joint="${j}" class="${j===state.j?'selected':''}"><th scope="row"><button type="button" data-output-joint="${j}" aria-pressed="${j===state.j}" aria-label="观察 J${j+1} 的力矩分解">J${j+1}</button></th>${parts.map(c=>{const v=result[c.key][j];return `<td class="${c.id}" data-component="${c.id}" data-value="${v}"><span class="component-value" title="${v.toFixed(9)} N·m">${Math.abs(v)>1e-10&&Math.abs(v)<.00005?v.toExponential(2):sgn(v,4)}</span><span class="component-track" aria-hidden="true"><span class="component-fill" style="left:${v<0?50+v/bound*50:50}%;width:${Math.abs(v)/bound*50}%"></span></span></td>`;}).join('')}</tr>`).join('')}</tbody></table>`;
+    if(focused!==undefined)$('torque-components').querySelector(`[data-output-joint="${focused}"]`).focus({preventScroll:true});
   }
   function makeMatrix(rows,{kind,names,footer}){
     const max=Math.max(1e-12,...rows.flat().map(Math.abs));
@@ -90,23 +99,29 @@
     const trans=result.links.reduce((s,l)=>s+l.linear[i][j],0),rot=result.links.reduce((s,l)=>s+l.angular[i][j],0);
     $('mass-origin-total').innerHTML=`<tr><th>合计 / kg·m²</th><td>${sgn(trans,6)}</td><td>${sgn(rot,6)}</td><td>${sgn(result.M[i][j],6)}</td></tr>`;
   }
+  function velocitySources(){
+    if(!$('velocity-source-details').open)return;
+    const i=state.j,squares=result.velocitySources.squares,pairs=result.velocitySources.pairs();
+    $('velocity-source-title').textContent=`J${i+1}：每个速度乘积贡献多少力矩？`;
+    $('velocity-source-rows').innerHTML=[...squares.map(s=>({name:`q̇${s.joint+1}²`,product:s.product,centrifugal:s.tau[i],coriolis:0})),...pairs.map(p=>({name:`q̇${p.joints[0]+1} × q̇${p.joints[1]+1}`,product:p.product,coriolis:p.tau[i],centrifugal:0}))].map(p=>`<tr><th scope="row">${p.name}</th><td>${sgn(p.product,4)}</td><td class="coriolis">${sgn(p.coriolis,6)}</td><td class="centrifugal">${sgn(p.centrifugal,6)}</td></tr>`).join('');
+  }
   function velocityPanel(){
-    const doubled=D.inverse(model,state.q,state.v.map(v=>2*v),Z(),[0,0,0]).tau;
-    $('velocity-rows').innerHTML=state.v.map((v,j)=>`<tr><td>J${j+1}</td><td>${sgn(v,2)}</td><td>${sgn(result.c[j],6)}</td><td>${sgn(doubled[j],6)}</td></tr>`).join('');
-    $('velocity-link-title').textContent=`J${state.j+1}：各连杆的速度项贡献 / N·m`;
-    const rows=result.links.map(l=>({name:l.name,value:result.velocityByLink[l.name][state.j]})),svg=$('velocity-links'),w=svg.clientWidth||400,h=rows.length*29+40,l=76,r=80,max=Math.max(.001,...rows.map(x=>Math.abs(x.value)))*1.12,x=v=>l+(v/max+1)*(w-l-r)/2;
+    // The velocity-product vector is homogeneous of degree two at fixed q.
+    $('velocity-rows').innerHTML=state.v.map((v,j)=>`<tr><th scope="row">J${j+1}</th><td>${sgn(v,2)}</td><td class="coriolis">${sgn(result.coriolis[j],6)}</td><td class="centrifugal">${sgn(result.centrifugal[j],6)}</td><td>${sgn(result.c[j],6)}</td><td>${sgn(4*result.c[j],6)}</td></tr>`).join('');
+    $('velocity-link-title').textContent=`J${state.j+1}：各连杆的科氏与离心贡献 / N·m`;
+    const rows=result.links.map(l=>({name:l.name,coriolis:result.coriolisByLink[l.name][state.j],centrifugal:result.centrifugalByLink[l.name][state.j]})),svg=$('velocity-links'),w=svg.clientWidth||400,h=rows.length*44+40,l=68,r=86,max=Math.max(.001,...rows.flatMap(x=>[Math.abs(x.coriolis),Math.abs(x.centrifugal)]))*1.12,x=v=>l+(v/max+1)*(w-l-r)/2;
     svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('height',h);
-    let s='<title>速度项的连杆贡献</title>';
-    rows.forEach((v,k)=>{const y=16+k*29;s+=`<text x="${l-9}" y="${y+3}" text-anchor="end">${v.name}</text><rect x="${Math.min(x(0),x(v.value))}" y="${y-7}" width="${Math.abs(x(v.value)-x(0))}" height="14" fill="var(--velocity)"/><text x="${w-4}" y="${y+3}" text-anchor="end">${sgn(v.value)}</text>`;});
+    let s='<title>所选关节的各连杆科氏与离心贡献，成对显示</title>';
+    rows.forEach((row,k)=>{const y=16+k*44;s+=`<text x="${l-9}" y="${y+7}" text-anchor="end">${row.name}</text>`;for(const [index,key] of ['coriolis','centrifugal'].entries()){const value=row[key],yy=y+index*15;s+=`<rect x="${Math.min(x(0),x(value))}" y="${yy-7}" width="${Math.abs(x(value)-x(0))}" height="10" fill="var(--${key})"><title>${row.name} ${key==='coriolis'?'科氏':'离心'} ${sgn(value,6)} N·m</title></rect><text x="${w-4}" y="${yy+2}" text-anchor="end" fill="var(--${key})">${sgn(value,4)}</text>`;}});
     s+=`<line x1="${x(0)}" y1="0" x2="${x(0)}" y2="${h-25}" stroke="var(--line)"/>`;
-    [-max,0,max].forEach(v=>s+=`<text x="${x(v)}" y="${h-6}" text-anchor="${v<0?'start':v>0?'end':'middle'}">${fmt(v,max<.01?3:2)}</text>`);svg.innerHTML=s;svgFinish(svg);
+    [-max,0,max].forEach(v=>s+=`<text x="${x(v)}" y="${h-6}" text-anchor="${v<0?'start':v>0?'end':'middle'}">${fmt(v,max<.01?3:2)}</text>`);svg.innerHTML=s;svgFinish(svg);velocitySources();
   }
   function selectedTotal(){
-    const i=state.j;$('joint-total').innerHTML=`<span>J${i+1} 的完整计算 / N·m</span><span class="sum"><span class="inertia">(${sgn(result.acc[i])})</span> + <span class="velocity">(${sgn(result.c[i])})</span> + <span class="gravity">(${sgn(result.g[i])})</span> = <strong>${sgn(result.tau[i])}</strong></span>`;
+    const i=state.j;$('joint-total').innerHTML=`<span>J${i+1} 的完整计算 / N·m</span><span class="sum">${components.map(c=>`<span class="${c.id}"><small>${c.name}</small> (${sgn(result[c.key][i],4)})</span>`).join(' + ')} = <strong>${sgn(result.tau[i],4)}</strong></span>`;
   }
   function render(recalculate=true){
     if(recalculate){result=YamLabMath.compute(D,model,state.q,state.v,state.a);computeCount++;}
-    sync();scene.draw(result,state);torqueBars();
+    sync();scene.draw(result,state);torqueBars();componentTable();
     if(state.panel==='gravity')gravityPanel();else if(state.panel==='mass')massPanel();else velocityPanel();
     selectedTotal();root.dataset.ready='true';root.dataset.torques=JSON.stringify(result.tau);
     root.dataset.state=JSON.stringify({q:state.q,v:state.v,a:state.a,j:state.j,col:state.col,mode:state.mode,panel:state.panel});
@@ -114,6 +129,7 @@
   function setPanel(panel){state.panel=panel;render(false);save();}
   function selectJoint(j){state.j=j;render(false);save();}
   all('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.mode==='motion'&&state.mode==='static'&&state.a.every(x=>x===0))state.a[1]=1;
     state.mode=b.dataset.mode;
     if(state.mode==='static'){state.a=Z();state.v=Z();state.panel='gravity';state.input='q';}
     if(state.mode==='acc'){state.v=Z();if(state.a.every(v=>v===0))state.a[1]=1;state.panel='mass';state.input='a';}
@@ -124,6 +140,15 @@
   all('[data-detail]').forEach(b=>b.addEventListener('click',()=>setPanel(b.dataset.detail)));
   all('[data-input]').forEach(b=>b.addEventListener('click',()=>{state.input=b.dataset.input;sync();save();}));
   all('[data-joint]').forEach(b=>b.addEventListener('click',()=>selectJoint(Number(b.dataset.joint))));
+  $('torque-components').addEventListener('click',e=>{const b=e.target.closest('[data-output-joint]');if(b)selectJoint(Number(b.dataset.outputJoint));});
+  $('torque-bars').addEventListener('click',e=>{const row=e.target.closest('[data-joint]');if(row)selectJoint(Number(row.dataset.joint));});
+  $('velocity-source-details').addEventListener('toggle',()=>{if(result)velocitySources();});
+  all('[data-velocity-preset]').forEach(b=>b.addEventListener('click',()=>{
+    state.mode='motion';state.input='v';state.panel='velocity';state.a=Z();
+    state.v=[0,.8,b.dataset.velocityPreset==='single'?0:b.dataset.velocityPreset==='pair'?.6:-.6,0,0,0];
+    render();save();
+  }));
+  $('zero-velocity').addEventListener('click',()=>{state.v=Z();render();save();});
   $('output-joint').addEventListener('change',e=>selectJoint(Number(e.target.value)));
   for(let i=0;i<6;i++)for(const prefix of ['number-','range-'])$(prefix+i).addEventListener('input',e=>{
     const value=e.target.valueAsNumber;if(!Number.isFinite(value))return;const cfg=config(i),bounded=Math.max(cfg.min,Math.min(cfg.max,value));state[state.input][i]=bounded*cfg.mult;if(value!==bounded)e.target.value=bounded;render();save();
@@ -144,5 +169,5 @@
   $('urdf-rows').innerHTML=Object.values(model.links).map(l=>`<tr><td>${l.name}</td><td>${fmt(l.mass,6)}</td><td>${vec(l.inertial.xyz,5)}</td></tr>`).join('');
   render();
   // Expose read-only numeric snapshots for browser regression checks and reproducibility.
-  window.yamLabSnapshot=()=>JSON.parse(JSON.stringify({state,result:{M:result.M,g:result.g,c:result.c,acc:result.acc,tau:result.tau},computeCount}));
+  window.yamLabSnapshot=()=>JSON.parse(JSON.stringify({state,result:{M:result.M,g:result.g,c:result.c,coriolis:result.coriolis,centrifugal:result.centrifugal,acc:result.acc,tau:result.tau},computeCount}));
 })();
