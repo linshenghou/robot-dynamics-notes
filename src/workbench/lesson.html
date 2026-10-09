@@ -1,0 +1,30 @@
+<article class="page" id="dynamics" data-title="完整动力学与力矩分解" hidden>
+  <div class="lesson-divider"><span>03 / 把四项力矩放在一起</span><a href="#inertia">回看 02：惯性矩阵与关节力矩</a></div>
+  <h1>把每个关节的力矩拆开看。</h1>
+  <p class="lede">现在加入关节速度，同时观察六台电机的重力、惯性、科氏与离心力矩。它们分别有多大，又怎样合成总力矩？</p>
+  <div class="formula big">τ = <span class="inertia">M(q) q̈</span> + <span class="coriolis">c<sub>cor</sub>(q, q̇)</span> + <span class="centrifugal">c<sub>cen</sub>(q, q̇)</span> + <span class="gravity">g(q)</span><small>固定基座 · 无外部接触、摩擦或柔性 · 各项均为六维关节驱动力矩</small></div>
+  <div class="notes-grid">
+    <div class="note"><b>01 · 静止悬停</b><p>速度与加速度都为零，只留下 g。先改变姿态，看重力补偿如何变化。</p></div>
+    <div class="note"><b>02 · 加入加速度</b><p>保持速度为零，编辑 q̈。观察 Mq̈ 如何与重力同号相加或反号抵消。</p></div>
+    <div class="note"><b>03 · 加入速度</b><p>编辑 q̇，让科氏、离心项出现。点击关节选中输出，再点公式展开计算来源。</p></div>
+  </div>
+  <div class="experiment frame-wrap dynamics-experiment">
+    <div class="experiment-header"><b>实验 · YAM 完整动力学力矩分解</b><a href="labs/workbench.html" target="_blank" rel="noreferrer">独立打开 ↗</a></div>
+    <iframe id="dynamics-frame" data-src="labs/workbench.html" title="YAM 完整动力学力矩分解实验" style="height:2400px"></iframe>
+    <div class="experiment-footer">每次输入指定一个瞬时状态，不会积分成运动轨迹。四类颜色表示力矩来源；三维箭头与数字显示各关节总力矩，连杆高亮帮助定位所选关节对应的结构。数值来自模型预测。</div>
+  </div>
+  <div class="reading">
+    <h2>速度的平方，与两个速度的交叉。</h2>
+    <p>本课按关节坐标中的速度乘积拆分：q̇<sub>j</sub>² 归入离心项，q̇<sub>j</sub>q̇<sub>k</sub>（j &lt; k）归入科氏项。一个关节转动时，科氏项为零；两个关节同时转动，才可能出现交叉项。这里显示电机所需的驱动力矩，符号遵循关节轴右手定则。</p>
+    <div class="scope"><strong>先看正负，再看大小。</strong>四项有符号相加，较大的分量可能相互抵消。总力矩很小时，不要把分量除以这个净值当作“占比”。</div>
+    <h2>试一个惯性项更明显的姿态。</h2>
+    <p>选择“加入加速度”，在角度栏手动设置 <code>q = [0°, 90°, 165°, 0°, 0°, 0°]</code>；再将加速度设为 <code>q̈ = [0, 1, 0, 0, 0, 0] rad/s²</code>。此模式的速度为零，比较 J2、J3 的重力与惯性栏。</p>
+    <div class="table-scroll"><table class="comparison"><caption>指定示例的参考值 / N·m（非实时读数，四舍五入）</caption><thead><tr><th scope="col">关节</th><th scope="col">重力 g</th><th scope="col">惯性 Mq̈</th></tr></thead><tbody><tr><th scope="row">J2</th><td>−0.0581</td><td>+0.8156</td></tr><tr><th scope="row">J3</th><td>+0.0562</td><td>−0.4155</td></tr></tbody></table></div>
+    <details>
+      <summary>再试一个科氏、离心项都明显的状态</summary>
+      <div class="inside"><p>保留上述姿态，选择“加入速度”。手动把六个加速度全部置零，再设置 <code>q̇ = [2, 2, −2, −2, −2, −2] rad/s</code>。</p><div class="table-scroll"><table class="comparison"><caption>指定示例的参考值 / N·m（非实时读数，四舍五入）</caption><thead><tr><th scope="col">关节</th><th scope="col">科氏 c<sub>cor</sub></th><th scope="col">离心 c<sub>cen</sub></th></tr></thead><tbody><tr><th scope="row">J2</th><td>−0.4073</td><td>−0.2257</td></tr><tr><th scope="row">J3</th><td>+0.2196</td><td>+0.1078</td></tr></tbody></table></div><p>惯性项此时为零；总力矩仍需加上该姿态下的重力。展开速度项，查看具体连杆及速度乘积的贡献。</p></div>
+    </details>
+  </div>
+  <div class="quiz" data-answer="1" data-explanation="固定 q 与 q̈ 后，M、g 和惯性项都不变。平方项与交叉项都含两个速度因子，因此全部速度乘 2 时，科氏与离心项各乘 4；总力矩通常不会整体乘 4。"><div class="quiz-title">检验速度项的尺度</div><p>保持姿态与加速度不变，将所有关节速度同时翻倍，会怎样？</p><div class="quiz-options"><button>科氏、离心项都变为原来的 2 倍</button><button>科氏、离心项都变为原来的 4 倍</button><button>所有分量和总力矩都变为原来的 4 倍</button></div><p class="quiz-feedback" aria-live="polite"></p></div>
+  <div class="next"><span>能拆开模型力矩后，再把它接到电机的前馈与反馈控制。</span><a href="#mit">04 · MIT 与拖拽 →</a></div>
+</article>

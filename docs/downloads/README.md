@@ -8,9 +8,10 @@
 可切换静止、加入加速度、加入速度；四色条形图与数值表同时展示各关节的重力、惯性、科氏、离心贡献和总力矩，保留正负与抵消关系。独立实验台还可查看逐连杆贡献、逐速度乘积来源，以及单关节／双关节转动与反向对照。
 向下滚动再进入动力学公式和学习路径。重力章节支持单关节转动实验：固定其余角度，并排比较六关节的参考补偿、当前补偿和变化量，再展开逐连杆的承载贡献。
 
-第二课已发布：[惯性矩阵与关节力矩](https://linshenghou.github.io/robot-dynamics-notes/#inertia)。
-课程依次为：01 重力补偿（附二维势能推导与三维 wrench）、02 惯性矩阵与关节力矩、03 MIT 模式、04 关节空间柔顺。
+总课程包含 [第二课：惯性矩阵与关节力矩](https://linshenghou.github.io/robot-dynamics-notes/#inertia) 和 [第三课：完整动力学与力矩分解](https://linshenghou.github.io/robot-dynamics-notes/#dynamics)。
+课程依次为：01 重力补偿（附二维势能推导与三维 wrench）、02 惯性矩阵与关节力矩、03 完整动力学与力矩分解、04 MIT 模式、05 关节空间柔顺。
 第二课提供 YAM 的姿态／加速度输入、六关节惯性力矩、完整 6×6 矩阵、单台电机的一行乘法、逐连杆惯性贡献，以及加回重力的对照实验。
+第三课在总课程内嵌入完整动力学实验台，连接四项力矩的解释、惯性主导与速度项主导的参数示例，以及速度平方规律的练习题。
 这是教学模型与软件验证，不是实机控制程序，也不代表机器人实测性能。
 
 ## 预览
@@ -78,7 +79,7 @@ docs/assets/site.js         交互与单关节动画
 docs/assets/physics.js      可单独验证的教学物理模型
 docs/labs/                 生成的实验台、重力与 wrench 实验
 docs/downloads/            模型、许可与说明
-src/workbench/             首页六关节实验台及完整动力学展开
+src/workbench/             首页实验台、完整动力学实验与第三课正文
 src/gravity/               YAM 重力实验源码与计算引擎
 src/inertia/               第二课正文、YAM 惯性实验源码
 src/model/                 固定版本模型、URDF、上游许可
@@ -87,7 +88,7 @@ src/figures/               本项目绘制的示意图
 scripts/                   构建与检查
 ```
 
-修改独立实验或下载资料后运行构建脚本。第二课正文维护在 `src/inertia/lesson.html`，构建时填入首页对应标记区域；其余课程正文、站点 CSS 和主页面 JS 在 docs 中维护。
+修改独立实验或下载资料后运行构建脚本。第二课正文维护在 `src/inertia/lesson.html`，第三课正文维护在 `src/workbench/lesson.html`，构建时填入总课程对应标记区域；其余课程正文、站点 CSS 和主页面 JS 在 docs 中维护。
 历史试验目录 `yam-dynamics/` 保留在本地并被忽略；正式源码已整理到 src，不依赖历史文件。
 
 ## 内容、模型与约定

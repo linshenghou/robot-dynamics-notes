@@ -40,3 +40,15 @@ main{max-width:1552px;margin:auto;padding:23px 40px 32px;outline:none}.page{max-
 /* Lesson two: preserve the visual-first dark course and reveal the algebra later. */
 .lesson-divider{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.lesson-divider a{font-size:11px;color:var(--muted)}.chapter-row.supplement-row .index{font-size:12px}.chapter-row.supplement-row strong{font-size:15px}.chapter-row.supplement-row{padding-block:16px}.inertia-experiment{margin-top:24px}.inertia-observations{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;border-bottom:1px solid var(--line);padding:10px 0 26px;margin:10px 0 34px}.inertia-observations span{font:11px var(--mono);color:var(--teal)}.inertia-observations h3{font-size:16px;line-height:1.6;margin:9px 0}.inertia-observations p{font-size:13px;color:var(--muted);margin:0}.inertia-meaning{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin:24px 0 28px}.inertia-meaning>div{min-width:0;border-top:2px solid var(--teal);background:var(--panel);padding:20px 22px}.inertia-meaning h3{font-size:19px;margin:12px 0}.inertia-meaning p{font-size:13px;color:var(--muted);margin:14px 0 0}.inertia-meaning .method-math{font-size:20px}.inertia-geometry{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:960px;margin:24px auto}.inertia-geometry figure{margin:0;min-width:0}.inertia-geometry img{display:block;width:100%;height:auto;background:var(--panel)}.inertia-geometry figcaption{font-size:12px;color:var(--muted);margin:10px 0}.inertia-experiment iframe{min-height:0}#inertia .formula .inertia{color:var(--teal)}
 @media(max-width:760px){.inertia-observations,.inertia-meaning,.inertia-geometry{grid-template-columns:1fr;gap:18px}.inertia-observations{padding-bottom:20px;margin-bottom:26px}.inertia-observations h3{margin:6px 0}.inertia-meaning>div{padding:17px}.inertia-meaning .method-math{font-size:18px}.inertia-geometry{max-width:420px}.lesson-divider a{font-size:10px}.chapter-row.supplement-row strong{font-size:14px}.inertia-experiment{margin-top:18px}}
+
+/* The full dynamics chapter keeps the complete workbench inside the course. */
+.page#dynamics{max-width:none}
+#dynamics .inertia{color:var(--teal)}
+#dynamics .coriolis{color:#baa3de}
+#dynamics .centrifugal{color:#79b9ed}
+#dynamics .gravity{color:var(--orange)}
+#dynamics>.formula.big{font-size:clamp(18px,2.4vw,29px)}
+#dynamics>.formula.big>span{display:inline-block;white-space:nowrap}
+#dynamics .comparison caption{font-size:12px;text-align:left;color:var(--muted);padding-bottom:8px}
+.dynamics-experiment iframe{min-height:0}
+@media(min-width:761px) and (max-width:950px){.sidebar nav{gap:16px}.nav-link{font-size:10px}}

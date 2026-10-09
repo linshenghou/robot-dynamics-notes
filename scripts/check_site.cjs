@@ -25,6 +25,21 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.route('**/*',route=>{const u=new URL(route.request().url());if(['file:','data:'].includes(u.protocol)||u.hostname==='127.0.0.1'||u.origin===new URL(base).origin)route.continue();else{external.push(u.href);route.abort();}});
   if(base.startsWith('file:'))await page.context().setOffline(true);
   await page.goto(base);await page.waitForLoadState('networkidle');
+  const chapterIds=await page.locator('.page').evaluateAll(pages=>pages.map(section=>section.id));
+  assert(chapterIds.includes('dynamics'),'The full dynamics experiment is a course chapter');
+  const dynamicsFrame=page.frameLocator('#dynamics-frame');
+  assert.equal(await page.locator('#dynamics-frame').getAttribute('data-src'),'labs/workbench.html','The new chapter loads its experiment on demand');
+  assert.equal(await page.locator('#dynamics-frame').getAttribute('src'),null,'The full experiment is not loaded on the home page');
+  assert.equal(await page.locator('#dynamics-frame').getAttribute('title'),'YAM 完整动力学力矩分解实验');
+  for(const [id,number] of [['dynamics','03'],['mit','04'],['compliance','05']]){
+   assert.equal((await page.locator(`.sidebar a[href="#${id}"] .num`).textContent()).trim(),number,`${id} navigation number`);
+   assert.equal((await page.locator(`.chapter-row[href="#${id}"] .index`).textContent()).trim(),number,`${id} home chapter number`);
+  }
+  async function dynamicsHeight(label){
+   const bodyHeight=await dynamicsFrame.locator('body').evaluate(async body=>{await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return Math.ceil(body.getBoundingClientRect().height);});
+   await page.waitForFunction(height=>Math.abs(document.querySelector('#dynamics-frame').clientHeight-(height+4))<2,bodyHeight);
+   assert((await page.locator('#dynamics-frame').boundingBox()).height>=bodyHeight,`${label}: embedded content fits without a clipped bottom`);
+  }
   const bench=page.frameLocator('#workbench-frame');await bench.locator('#yam-lab[data-ready="true"]').waitFor();
   await page.screenshot({path:path.join(artifacts,'course-home.png'),fullPage:true});
   await page.screenshot({path:path.join(artifacts,'course-first-screen.png')});
@@ -46,6 +61,41 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   const initial=await bench.locator('#yam-lab').getAttribute('data-torques');await bench.locator('#range-2').focus();await page.keyboard.press('ArrowRight');assert.notEqual(await bench.locator('#yam-lab').getAttribute('data-torques'),initial);
   await bench.locator('#number-1').fill('0');const componentsAfter=await componentRows();assert(componentsBefore.some((row,j)=>row.torque!==componentsAfter[j].torque),'Torques respond to joint angles');
   await page.locator('#begin-learning').click();await page.waitForFunction(()=>scrollY>600);
+  await page.locator('.chapter-row[href="#dynamics"]').click();await page.locator('#dynamics').waitFor({state:'visible'});
+  assert.equal((await page.evaluate(()=>lessonSnapshot())).page,'dynamics');
+  assert.equal(await page.title(),'完整动力学与力矩分解 · 机械臂动力学手记');
+  assert.equal(await page.locator('.sidebar a[href="#dynamics"]').getAttribute('aria-current'),'page');
+  assert.equal(await page.locator('.sidebar [aria-current="page"]').count(),1,'The new chapter owns the active navigation state');
+  assert.equal(await page.locator('#dynamics-frame').getAttribute('src'),'labs/workbench.html');
+  await dynamicsFrame.locator('#yam-lab[data-ready="true"]').waitFor();
+  assert(await dynamicsFrame.locator('.calculation').isVisible(),'The course embeds the full workbench');
+  for(const mode of ['static','acc','motion']){
+   await dynamicsFrame.locator(`[data-mode="${mode}"]`).click();
+   const state=await dynamicsFrame.locator('html').evaluate(()=>yamLabSnapshot());assert.equal(state.state.mode,mode);
+   const cells=dynamicsFrame.locator('#torque-components tbody td[data-component]:not([data-component="total"])');
+   assert.equal(await cells.count(),24,'All six joints show all four torque values');
+   assert(await cells.evaluateAll(entries=>entries.every(cell=>cell.getBoundingClientRect().width>0&&cell.textContent.trim().length>0&&Number.isFinite(Number(cell.dataset.value)))),'The 24 component values are rendered');
+   assert.equal(await dynamicsFrame.locator('#torque-bars .torque-component').count(),24);
+   if(mode==='static')assert(state.result.acc.every(x=>Math.abs(x)<1e-10)&&state.result.c.every(x=>Math.abs(x)<1e-10));
+   if(mode==='acc')assert(state.result.acc.some(x=>Math.abs(x)>.001)&&state.result.c.every(x=>Math.abs(x)<1e-10));
+   if(mode==='motion')assert(state.result.c.some(x=>Math.abs(x)>.001));
+   await dynamicsHeight(`${mode} chapter`);
+  }
+  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(artifacts,'course-dynamics-first-screen.png')});
+  await dynamicsFrame.locator('.workspace').screenshot({path:path.join(artifacts,'course-dynamics-workbench.png')});
+  await page.locator('#dynamics').screenshot({path:path.join(artifacts,'course-dynamics.png')});
+  const dynamicsQuizzes=page.locator('#dynamics .quiz');assert(await dynamicsQuizzes.count()>0,'The new chapter has a learning check');
+  for(const quiz of await dynamicsQuizzes.all()){
+   const answer=Number(await quiz.getAttribute('data-answer'));
+   await quiz.locator('.quiz-options button').nth(answer).click();
+   assert((await quiz.locator('.quiz-feedback').textContent()).startsWith('对。'),'Dynamics quiz gives correct-answer feedback');
+  }
+  await page.reload();await page.locator('#dynamics').waitFor({state:'visible'});await dynamicsFrame.locator('#yam-lab[data-ready="true"]').waitFor();
+  assert.equal((await page.evaluate(()=>lessonSnapshot())).page,'dynamics','Refreshing the deep link preserves the chapter');
+  assert.equal(await page.title(),'完整动力学与力矩分解 · 机械臂动力学手记');
+  assert.equal(await page.locator('.sidebar a[href="#dynamics"]').getAttribute('aria-current'),'page');
+  await page.goto(base+'#inertia');await page.locator('#inertia .next a[href="#dynamics"]').click();await page.locator('#dynamics').waitFor({state:'visible'});
+  await page.locator('#dynamics .next a[href="#mit"]').click();await page.locator('#mit').waitFor({state:'visible'});
   await page.goto(base+'#gravity');
   const gf=page.frameLocator('iframe[title="YAM 六关节重力补偿实验"]');await gf.locator('#yam-gravity-explorer[data-ready="true"]').waitFor();
   const torque=await gf.locator('#yg-tau1').textContent();await gf.locator('#yg-q1').focus();await page.keyboard.press('ArrowRight');assert.notEqual(await gf.locator('#yg-tau1').textContent(),torque);
@@ -151,11 +201,15 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.reload();assert.equal((await page.evaluate(()=>lessonSnapshot())).page,'sources');
   for(const width of [390,320]){
    await page.setViewportSize({width,height:850});
-   for(const id of ['start','gravity','planar','wrench','mit','compliance','sources']){await page.goto(base+'#'+id);await page.locator('#'+id).waitFor({state:'visible'});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px overflow: ${id}`);if(id==='planar'){if(width===390)await page.locator('.method-grid').screenshot({path:path.join(artifacts,'planar-methods-mobile.png')});await page.locator('summary').filter({hasText:'从点质量到真实连杆'}).click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px RNEA bridge overflow`);if(width===390)await page.locator('.rnea-bridge').screenshot({path:path.join(artifacts,'planar-rnea-bridge-mobile.png')});}if(id==='wrench'&&width===390){const mobileWrench=page.frameLocator('iframe[title="刚体受力与六维 wrench 实验"]');await mobileWrench.locator('.component-card').last().waitFor();assert(await mobileWrench.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),'Mobile wrench has no horizontal overflow');await mobileWrench.locator('.workspace').screenshot({path:path.join(artifacts,'wrench-door-mobile.png')});await mobileWrench.locator('#entry-y-example').click();await mobileWrench.locator('.entry-bridge').screenshot({path:path.join(artifacts,'wrench-two-views-mobile.png')});await mobileWrench.locator('[data-preset="oblique"]').click();await mobileWrench.locator('.components').screenshot({path:path.join(artifacts,'wrench-six-components-mobile.png')});await mobileWrench.locator('.advanced-fold > summary').click();await mobileWrench.locator('#screw-sample').click();await mobileWrench.locator('.dual-section').screenshot({path:path.join(artifacts,'wrench-twist-power-mobile.png')});}}
+   for(const id of chapterIds){await page.goto(base+'#'+id);await page.locator('#'+id).waitFor({state:'visible'});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px overflow: ${id}`);if(id==='planar'){if(width===390)await page.locator('.method-grid').screenshot({path:path.join(artifacts,'planar-methods-mobile.png')});await page.locator('summary').filter({hasText:'从点质量到真实连杆'}).click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width}px RNEA bridge overflow`);if(width===390)await page.locator('.rnea-bridge').screenshot({path:path.join(artifacts,'planar-rnea-bridge-mobile.png')});}if(id==='wrench'&&width===390){const mobileWrench=page.frameLocator('iframe[title="刚体受力与六维 wrench 实验"]');await mobileWrench.locator('.component-card').last().waitFor();assert(await mobileWrench.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),'Mobile wrench has no horizontal overflow');await mobileWrench.locator('.workspace').screenshot({path:path.join(artifacts,'wrench-door-mobile.png')});await mobileWrench.locator('#entry-y-example').click();await mobileWrench.locator('.entry-bridge').screenshot({path:path.join(artifacts,'wrench-two-views-mobile.png')});await mobileWrench.locator('[data-preset="oblique"]').click();await mobileWrench.locator('.components').screenshot({path:path.join(artifacts,'wrench-six-components-mobile.png')});await mobileWrench.locator('.advanced-fold > summary').click();await mobileWrench.locator('#screw-sample').click();await mobileWrench.locator('.dual-section').screenshot({path:path.join(artifacts,'wrench-twist-power-mobile.png')});}if(id==='dynamics'){await dynamicsFrame.locator('#yam-lab[data-ready="true"]').waitFor();assert(await dynamicsFrame.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),`${width}px embedded full workbench has no horizontal overflow`);await dynamicsFrame.locator('[data-mode="motion"]').click();await dynamicsHeight(`${width}px dynamics chapter`);await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(artifacts,`course-dynamics-mobile-${width}.png`)});}}
    await page.goto(base+'#start');await bench.locator('#lab-canvas').waitFor({state:'visible'});
    await page.screenshot({path:path.join(artifacts,'course-mobile-first-'+width+'.png')});
    assert(await bench.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),`${width}px workbench overflow`);
    await page.screenshot({path:path.join(artifacts,`course-home-${width}.png`),fullPage:true});
+   await page.locator('#menu-toggle').click();assert.equal(await page.locator('#menu-toggle').getAttribute('aria-expanded'),'true');
+   await page.locator('.sidebar a[href="#dynamics"]').click();await page.locator('#dynamics').waitFor({state:'visible'});
+   assert.equal(await page.locator('#menu-toggle').getAttribute('aria-expanded'),'false',`${width}px menu closes after opening dynamics`);
+   assert.equal(await page.locator('.sidebar a[href="#dynamics"]').getAttribute('aria-current'),'page');
   }
   await page.goto(base+'#start');await page.locator('#menu-toggle').click();assert.equal(await page.locator('#menu-toggle').getAttribute('aria-expanded'),'true');await page.locator('.sidebar a[href="#compliance"]').click();await page.locator('#compliance').waitFor({state:'visible'});assert.equal(await page.locator('#menu-toggle').getAttribute('aria-expanded'),'false');
   await page.screenshot({path:path.join(artifacts,'course-mobile.png'),fullPage:true});
@@ -168,7 +222,7 @@ assert.notEqual(torqueHeat.css(0),torqueHeat.css(16));
   await page.locator('[data-mode="motion"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.c.some(x=>Math.abs(x)>.001));
   await page.locator('[data-mode="static"]').click();snap=await page.evaluate(()=>yamLabSnapshot());assert(snap.result.acc.every(x=>Math.abs(x)<1e-10));assert(snap.result.c.every(x=>Math.abs(x)<1e-10));
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:7,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','four distinct torque components and six numerical decompositions','four-term torque sum and live joint angles','standalone inertia and velocity modes','navigation and deep links','gravity iframe slider','planar potential derivative and Newton-Euler agreement','live two-link RNEA bridge and mobile layout','planar special pose','quiz feedback','door, raised, oblique and collinear force presets','camera rotation leaves wrench unchanged','two perpendicular 2D views produce the spatial wrench','wrench projection and six live components','oblique force cross product and component selection','twist-wrench power pairing in rotation, screw and translation','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
+  const report={passed:true,transport:base.startsWith('file:')?'offline file':'HTTP project subpath',viewportWidths:[1440,1366,390,320],chapters:chapterIds.length,chapterIds,externalRequests:external.length,pageErrors:errors.length,checks:['dark model and six torques before formulas','four distinct torque components and six numerical decompositions','four-term torque sum and live joint angles','standalone inertia and velocity modes','navigation and deep links','full dynamics chapter navigation, numbering and lazy loading','embedded full workbench modes and 24 component values','automatic dynamics iframe height and responsive layout','dynamics deep-link refresh, quizzes and next-chapter links','mobile navigation into dynamics','gravity iframe slider','planar potential derivative and Newton-Euler agreement','live two-link RNEA bridge and mobile layout','planar special pose','quiz feedback','door, raised, oblique and collinear force presets','camera rotation leaves wrench unchanged','two perpendicular 2D views produce the spatial wrench','wrench projection and six live components','oblique force cross product and component selection','twist-wrench power pairing in rotation, screw and translation','dynamic force and release','coasting and pause on navigation','mobile menu','no horizontal overflow']};
   fs.writeFileSync(path.join(artifacts,base.startsWith('file:')?'browser-file.json':'browser-http.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
  }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

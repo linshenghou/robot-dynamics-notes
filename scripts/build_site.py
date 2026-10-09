@@ -33,11 +33,13 @@ inertia=inertia.replace('<head>','<!-- I2RT model and reduced geometry: '+licens
 outputs={ROOT/'docs/labs/gravity.html':gravity,ROOT/'docs/labs/wrench.html':wrench,ROOT/'docs/labs/workbench.html':workbench,ROOT/'docs/labs/inertia.html':inertia}
 course_path=ROOT/'docs/index.html'
 course=course_path.read_text()
-start='<!-- INERTIA_LESSON_START -->'
-end='<!-- INERTIA_LESSON_END -->'
-before,remainder=course.split(start,1)
-_,after=remainder.split(end,1)
-outputs[course_path]=before+start+'\n'+(src/'inertia/lesson.html').read_text().strip()+'\n'+end+after
+for lesson,source in [('INERTIA','inertia/lesson.html'),('DYNAMICS','workbench/lesson.html')]:
+    start=f'<!-- {lesson}_LESSON_START -->'
+    end=f'<!-- {lesson}_LESSON_END -->'
+    before,remainder=course.split(start,1)
+    _,after=remainder.split(end,1)
+    course=before+start+'\n'+(src/source).read_text().strip()+'\n'+end+after
+outputs[course_path]=course
 for name in ['gravity-1r.svg','gravity-2r.svg','inertia-2r.svg']:
     outputs[ROOT/'docs/assets'/name]=(src/'figures'/name).read_text()
 inertia_figure=(src/'figures/inertia-2r.svg').read_text()

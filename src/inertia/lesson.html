@@ -33,5 +33,5 @@
   <div class="reading"><p>在实验中保持姿态和加速度不变，勾选“加回第一课的重力项”。M 与惯性力矩保持原值，每台电机再加上自己的 g(q)。两项可能同号相加，也可能反号抵消。</p><p>再点击“加速度归零”：惯性项消失，六台电机只留下重力补偿。这时你看到的，就是第一课的静止悬停。</p></div>
   <div class="quiz" data-answer="0" data-explanation="固定 q 后，M 和 g 都不变。加速度加倍只让 Mq̈ 加倍，因此总力矩变为 2Mq̈ + g，通常不是原来总力矩的两倍。"><div class="quiz-title">区分“惯性力矩”和“电机总力矩”</div><p>加回重力后，固定姿态，将所有关节加速度加倍，会怎样？</p><div class="quiz-options"><button>惯性项加倍，重力项保持不变</button><button>惯性项和重力项都加倍</button></div><p class="quiz-feedback" aria-live="polite"></p></div>
   <div class="reading"><h2>这对基础力矩控制意味着什么？</h2><p>重力前馈负责托住重量。启动、停止、改变运动速度时，还要产生惯性力矩；即使运动速度很小，突然启动也可能有明显的加速度。只补偿重力的控制器仍可通过反馈产生动态力矩，但惯性不会因此消失。</p><p>我们现在能分别阅读 g(q) 和 M(q)q̈，也能在 q̇ = 0 的瞬间把它们相加。速度相关项、完整轨迹跟踪和任务空间惯性，会在后续课程中展开。</p></div>
-  <div class="next"><span>第一课托住重量，第二课理解加速。接着把模型连接到电机接口。</span><a href="#mit">03 · MIT 模式与前馈力矩 →</a></div>
+  <div class="next"><span>重力和惯性已经清楚。接着加入速度，把四项力矩一起看。</span><a href="#dynamics">03 · 完整动力学与力矩分解 →</a></div>
 </article>

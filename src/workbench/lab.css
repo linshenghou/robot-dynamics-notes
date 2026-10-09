@@ -157,3 +157,7 @@ h1,.calculation-header h2{font-family:var(--font);letter-spacing:-.5px}
 
 .christoffel-formula{margin-top:10px;color:var(--velocity);overflow-wrap:anywhere;line-height:1.9}
 .christoffel-formula span{display:inline-block}
+
+.course-return{display:block;margin-top:8px;font:11px var(--font);text-decoration:none;color:var(--inertia)}
+.course-return:hover{text-decoration:underline}
+@media(max-width:520px){.model-label{flex-wrap:wrap}.course-return{margin-top:0}}
